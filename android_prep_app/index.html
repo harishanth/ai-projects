@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Android Lead & Staff Interview Prep Studio</title>
+  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- App Layout Container -->
+  <div class="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">🤖</div>
+          <div class="brand-info">
+            <h2>AndroidPrep</h2>
+            <span class="badge badge-lead">10-11 Yrs Lead</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav-menu" role="tablist">
+        <button class="nav-item active" data-tab="dashboard" role="tab" aria-selected="true" title="Dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label"><span class="full-label">Dashboard</span><span class="short-label">Home</span></span>
+        </button>
+        <button class="nav-item" data-tab="companies" role="tab" aria-selected="false" title="Company Intel">
+          <span class="nav-icon">🏢</span>
+          <span class="nav-label"><span class="full-label">Company Intel (10)</span><span class="short-label">Intel</span></span>
+        </button>
+        <button class="nav-item" data-tab="coding" role="tab" aria-selected="false" title="Coding Arena">
+          <span class="nav-icon">💻</span>
+          <span class="nav-label"><span class="full-label">Coding Arena</span><span class="short-label">Coding</span></span>
+          <span class="nav-counter" id="solvedCounter">0/10</span>
+        </button>
+        <button class="nav-item" data-tab="system-design" role="tab" aria-selected="false" title="System Design Studio">
+          <span class="nav-icon">🏛️</span>
+          <span class="nav-label"><span class="full-label">System Design Studio</span><span class="short-label">Design</span></span>
+        </button>
+        <button class="nav-item" data-tab="quiz" role="tab" aria-selected="false" title="Internals Quiz">
+          <span class="nav-icon">🧠</span>
+          <span class="nav-label"><span class="full-label">Internals Quiz</span><span class="short-label">Quiz</span></span>
+        </button>
+        <button class="nav-item" data-tab="cheatsheet" role="tab" aria-selected="false" title="Cheat Sheets">
+          <span class="nav-icon">⚡</span>
+          <span class="nav-label"><span class="full-label">Cheat Sheets</span><span class="short-label">Cheats</span></span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="https://docs.google.com/spreadsheets/d/1YkA9gZH8PYWQV1GyPNQLYX9Eh6oAXiYPw1uWs2oLaDw/edit" target="_blank" rel="noopener noreferrer" class="sheet-link-btn">
+          <span class="sheet-icon">📈</span>
+          <div class="sheet-text">
+            <strong>Open Google Sheet</strong>
+            <small>Live Naukri Tracker</small>
+          </div>
+          <span class="ext-arrow">↗</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Action Bar -->
+      <header class="top-bar">
+        <div class="mobile-brand-bar">
+          <div class="brand">
+            <div class="brand-icon">🤖</div>
+            <div class="brand-info">
+              <h2>AndroidPrep</h2>
+              <span class="badge badge-lead">10-11 Yrs Lead</span>
+            </div>
+          </div>
+          <a href="https://docs.google.com/spreadsheets/d/1YkA9gZH8PYWQV1GyPNQLYX9Eh6oAXiYPw1uWs2oLaDw/edit" target="_blank" rel="noopener noreferrer" class="mobile-sheet-btn" title="Open Google Sheet">
+            <span>📈 Sheet</span>
+            <span>↗</span>
+          </a>
+        </div>
+
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="globalSearch" placeholder="Search companies, tech stacks, topics (e.g. Compose, WebRTC, KMP)...">
+        </div>
+
+        <div class="top-actions">
+          <div class="readiness-pill">
+            <span class="pulse-dot"></span>
+            <span id="readinessScoreText">Readiness: 35%</span>
+          </div>
+          
+          <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode">
+            <span class="theme-icon">🌙</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Views Wrapper -->
+      <div class="views-wrapper">
+        
+        <!-- Tab 1: Dashboard -->
+        <section id="dashboardView" class="view-panel active">
+          <div class="dashboard-hero">
+            <div class="hero-content">
+              <h1>Android Lead & Architect Interview Hub</h1>
+              <p>Tailored preparation for senior roles (10–11 yrs exp) across Chennai & Remote openings from your live Naukri tracking.</p>
+              <div class="hero-tags">
+                <span class="tag">📍 Chennai & Remote</span>
+                <span class="tag">💼 10 Jobs Tracked</span>
+                <span class="tag">🎯 10 Production Challenges</span>
+              </div>
+            </div>
+            <div class="readiness-card">
+              <div class="progress-circle" id="dashboardProgressRing">
+                <div class="progress-inner">
+                  <span class="progress-value" id="progressPercent">0%</span>
+                  <span class="progress-label">Ready</span>
+                </div>
+              </div>
+              <div class="progress-stats">
+                <div class="stat-row"><span>Coding Solved:</span> <strong id="statCodingCount">0 / 10</strong></div>
+                <div class="stat-row"><span>Quiz Accuracy:</span> <strong id="statQuizScore">0%</strong></div>
+                <div class="stat-row"><span>System Design Reviewed:</span> <strong id="statHldCount">0 / 3</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Strategic Pillars Grid -->
+          <div class="section-title">
+            <h3>Strategic Preparation Pillars</h3>
+            <span class="subtext">Categorized from your target companies' evaluation criteria</span>
+          </div>
+
+          <div class="pillars-grid">
+            <div class="pillar-card" data-filter="Tier-1 Product">
+              <div class="pillar-icon">💎</div>
+              <h4>Tier-1 Product Scale</h4>
+              <p>Offline sync, optimistic UI, monorepo architecture, design systems.</p>
+              <span class="pillar-target">Target: Atlassian (Remote)</span>
+            </div>
+            <div class="pillar-card" data-filter="VoIP / SIP">
+              <div class="pillar-icon">🎙️</div>
+              <h4>Real-Time & VoIP Media</h4>
+              <p>WebRTC, SIP, Android 14/15 Foreground Services, low-latency audio.</p>
+              <span class="pillar-target">Target: Worktual Innovations (Chennai)</span>
+            </div>
+            <div class="pillar-card" data-filter="Compose Migration">
+              <div class="pillar-icon">⚡</div>
+              <h4>Modernization & Compose</h4>
+              <p>Zero-downtime Java/XML to Compose migration, state stability, MVI.</p>
+              <span class="pillar-target">Target: TCS & Vinove (Chennai)</span>
+            </div>
+            <div class="pillar-card" data-filter="Kotlin Multiplatform">
+              <div class="pillar-icon">🌐</div>
+              <h4>KMP & Cross-Platform</h4>
+              <p>Shared data layer in KMP, Ktor, SQLDelight with native Compose UI.</p>
+              <span class="pillar-target">Target: Swits Digital (Chennai)</span>
+            </div>
+          </div>
+
+          <!-- Quick Actions Grid -->
+          <div class="quick-actions-grid">
+            <div class="action-card" onclick="switchTab('coding')">
+              <div class="action-header">
+                <span class="action-badge">Live Coding</span>
+                <span class="action-arrow">→</span>
+              </div>
+              <h4>Concurrent Token Refresh with Mutex</h4>
+              <p>Frequently tested at Atlassian and Global MNCs to test Coroutines concurrency.</p>
+            </div>
+
+            <div class="action-card" onclick="switchTab('system-design')">
+              <div class="action-header">
+                <span class="action-badge">System Design</span>
+                <span class="action-arrow">→</span>
+              </div>
+              <h4>Offline-First Mobile Issue Tracker</h4>
+              <p>Deep-dive architecture for Jira mobile caching, room DB, and conflict resolution.</p>
+            </div>
+
+            <div class="action-card" onclick="switchTab('quiz')">
+              <div class="action-header">
+                <span class="action-badge">Interview Quiz</span>
+                <span class="action-arrow">→</span>
+              </div>
+              <h4>Android Internals & Gotchas</h4>
+              <p>Test your knowledge on ART compilation, SupervisorJob, and Android 14 FGS types.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 2: Company Intel -->
+        <section id="companiesView" class="view-panel">
+          <div class="view-header">
+            <div>
+              <h2>Target Companies & Interview Pipelines</h2>
+              <p>Round-by-round interview stages, targeted tech stack, and evaluation criteria for each firm.</p>
+            </div>
+            <div class="filter-controls">
+              <select id="companyLocationFilter" class="select-dropdown">
+                <option value="all">All Locations</option>
+                <option value="Remote">Remote Only</option>
+                <option value="Chennai">Chennai Only</option>
+              </select>
+              <select id="companyPriorityFilter" class="select-dropdown">
+                <option value="all">All Priorities</option>
+                <option value="High">High Priority Only</option>
+                <option value="Medium-High">Medium-High</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="companies-grid" id="companiesContainer">
+            <!-- Dynamically populated via app.js -->
+          </div>
+        </section>
+
+        <!-- Tab 3: Coding Arena -->
+        <section id="codingView" class="view-panel">
+          <div class="coding-layout">
+            <!-- Problem Selector Sidebar -->
+            <div class="challenge-sidebar">
+              <div class="challenge-header">
+                <h3>Lead Coding Challenges</h3>
+                <span class="challenge-subtitle">Real-world production problems</span>
+              </div>
+              <div class="challenge-list" id="challengeList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Coding Playground Area -->
+            <div class="challenge-main" id="challengeMain">
+              <!-- Dynamically populated based on active challenge -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 4: System Design Studio -->
+        <section id="system-designView" class="view-panel">
+          <div class="view-header">
+            <div>
+              <h2>Mobile High-Level System Design (HLD)</h2>
+              <p>Production architectural blueprints, layered design, and trade-off considerations.</p>
+            </div>
+            <div class="hld-tabs" id="hldTabs">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <div class="hld-content-area" id="hldContent">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- Tab 5: Internals Quiz -->
+        <section id="quizView" class="view-panel">
+          <div class="quiz-container">
+            <div class="quiz-header">
+              <div>
+                <h2>Android & Kotlin Lead Interview Quiz</h2>
+                <p>Timed mock assessment on runtime internals, coroutines semantics, and memory profiling.</p>
+              </div>
+              <div class="quiz-score-badge" id="quizStatusBadge">
+                Question <span id="currentQuestionNum">1</span> of <span id="totalQuestionsNum">6</span>
+              </div>
+            </div>
+
+            <div class="quiz-card" id="quizCard">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 6: Cheat Sheets -->
+        <section id="cheatsheetView" class="view-panel">
+          <div class="view-header">
+            <div>
+              <h2>Lead Engineer Fast Reference Cards</h2>
+              <p>Key syntax, pitfalls, and architectural principles to review before an interview.</p>
+            </div>
+          </div>
+
+          <div class="cheatsheet-grid">
+            <div class="cheat-card">
+              <div class="cheat-header">
+                <span class="cheat-icon">🔄</span>
+                <h3>Compose Stability & Skipping Rules</h3>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>List&lt;T&gt; is UNSTABLE:</strong> Standard interfaces cannot guarantee immutability. Use <code>ImmutableList&lt;T&gt;</code> or annotate data classes with <code>@Immutable</code>.</li>
+                <li><strong>Unstable Lambdas:</strong> Inline lambdas recreate instances on every recomposition. Use <code>remember(key) { { action() } }</code> or method references.</li>
+                <li><strong>derivedStateOf:</strong> Use when an input state updates frequently (e.g., scroll pixels) but the UI only cares about a threshold (e.g., <code>offset > 50</code>).</li>
+                <li><strong>Phase Skipping:</strong> Defer state reads to Layout or Draw phase (using <code>Modifier.offset { ... }</code>) to bypass composition phase entirely.</li>
+              </ul>
+            </div>
+
+            <div class="cheat-card">
+              <div class="cheat-header">
+                <span class="cheat-icon">🧵</span>
+                <h3>Coroutines & Structured Concurrency</h3>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>Job vs SupervisorJob:</strong> In standard <code>Job</code>, any child failure cancels the parent and siblings. <code>SupervisorJob</code> isolates failures to the failing child only.</li>
+                <li><strong>CoroutineExceptionHandler:</strong> Only works on top-level root coroutines launched with <code>launch</code>; ignored if passed to child coroutines.</li>
+                <li><strong>StateFlow vs SharedFlow:</strong> <code>StateFlow</code> always has an initial value, replays 1, and filters duplicates (distinctUntilChanged). <code>SharedFlow</code> is for one-time events without replay.</li>
+                <li><strong>Mutex vs Synchronized:</strong> Always use <code>Mutex.withLock</code> in coroutines to suspend rather than block OS threads.</li>
+              </ul>
+            </div>
+
+            <div class="cheat-card">
+              <div class="cheat-header">
+                <span class="cheat-icon">📱</span>
+                <h3>Android 14 & 15 Platform Changes</h3>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>Strict FGS Types:</strong> Foreground Services MUST declare explicit <code>foregroundServiceType</code> in both AndroidManifest and in <code>startForeground()</code>.</li>
+                <li><strong>16 KB Page Size:</strong> Android 15 introduces 16 KB memory page size support. Native C++/JNI libraries must be recompiled with 16KB alignment.</li>
+                <li><strong>Predictive Back Animation:</strong> Requires <code>android:enableOnBackInvokedCallback="true"</code> and migrating to <code>BackHandler</code> in Compose.</li>
+                <li><strong>Doze & App Standby:</strong> Network requests during Doze require high-priority FCM messages or expedited WorkManager jobs.</li>
+              </ul>
+            </div>
+
+            <div class="cheat-card">
+              <div class="cheat-header">
+                <span class="cheat-icon">🛡️</span>
+                <h3>OWASP Mobile Top 10 Security Checklist</h3>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>Android Keystore:</strong> Generate cryptographic AES-GCM keys inside hardware-backed TEE / StrongBox; never hardcode salt or keys in source code.</li>
+                <li><strong>Certificate Pinning:</strong> Configure pin sets in <code>res/xml/network_security_config.xml</code> with backup pins to avoid app breakage on cert expiry.</li>
+                <li><strong>Database Encryption:</strong> Use SQLCipher with Room DB, deriving the database encryption passphrase dynamically using Keystore.</li>
+                <li><strong>Root & Anti-Tamper:</strong> Check for test-keys build tags, su binaries, and implement Play Integrity API for server-side attestation.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+
+
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
