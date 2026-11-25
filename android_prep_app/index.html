@@ -32,7 +32,7 @@
         </button>
         <button class="nav-item" data-tab="companies" role="tab" aria-selected="false" title="Company Intel">
           <span class="nav-icon">🏢</span>
-          <span class="nav-label"><span class="full-label">Company Intel (10)</span><span class="short-label">Intel</span></span>
+          <span class="nav-label"><span class="full-label" id="companyNavLabel">Company Intel (14)</span><span class="short-label">Intel</span></span>
         </button>
         <button class="nav-item" data-tab="coding" role="tab" aria-selected="false" title="Coding Arena">
           <span class="nav-icon">💻</span>
@@ -112,7 +112,7 @@
               <p>Tailored preparation for senior roles (10–11 yrs exp) across Chennai & Remote openings from your live Naukri tracking.</p>
               <div class="hero-tags">
                 <span class="tag">📍 Chennai & Remote</span>
-                <span class="tag">💼 10 Jobs Tracked</span>
+                <span class="tag" id="heroJobsCount">💼 14 Jobs Tracked</span>
                 <span class="tag">🎯 10 Production Challenges</span>
               </div>
             </div>
@@ -126,7 +126,7 @@
               <div class="progress-stats">
                 <div class="stat-row"><span>Coding Solved:</span> <strong id="statCodingCount">0 / 10</strong></div>
                 <div class="stat-row"><span>Quiz Accuracy:</span> <strong id="statQuizScore">0%</strong></div>
-                <div class="stat-row"><span>System Design Reviewed:</span> <strong id="statHldCount">0 / 3</strong></div>
+                <div class="stat-row"><span>System Design Reviewed:</span> <strong id="statHldCount">0 / 5</strong></div>
               </div>
             </div>
           </div>
@@ -154,13 +154,25 @@
               <div class="pillar-icon">⚡</div>
               <h4>Modernization & Compose</h4>
               <p>Zero-downtime Java/XML to Compose migration, state stability, MVI.</p>
-              <span class="pillar-target">Target: TCS & Vinove (Chennai)</span>
+              <span class="pillar-target">Target: TCS, Vinove & Bounteous</span>
             </div>
             <div class="pillar-card" data-filter="Kotlin Multiplatform">
               <div class="pillar-icon">🌐</div>
               <h4>KMP & Cross-Platform</h4>
               <p>Shared data layer in KMP, Ktor, SQLDelight with native Compose UI.</p>
               <span class="pillar-target">Target: Swits Digital (Chennai)</span>
+            </div>
+            <div class="pillar-card" data-filter="Fintech Security">
+              <div class="pillar-icon">🔒</div>
+              <h4>Fintech Security & Payments</h4>
+              <p>Hardware StrongBox KeyStore, Biometrics, idempotency, token security.</p>
+              <span class="pillar-target">Target: PayPal & Global MNC</span>
+            </div>
+            <div class="pillar-card" data-filter="ExoPlayer">
+              <div class="pillar-icon">🎬</div>
+              <h4>Media Players & Streaming</h4>
+              <p>Media3 / ExoPlayer, Widevine DRM, adaptive bitrate (ABR), SurfaceView.</p>
+              <span class="pillar-target">Target: Tata Elxsi (Chennai)</span>
             </div>
           </div>
 
@@ -210,6 +222,7 @@
               </select>
               <select id="companyPriorityFilter" class="select-dropdown">
                 <option value="all">All Priorities</option>
+                <option value="Top Priority">Top Priority (Staff Track)</option>
                 <option value="High">High Priority Only</option>
                 <option value="Medium-High">Medium-High</option>
               </select>

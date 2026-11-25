@@ -134,6 +134,11 @@ function updateReadiness() {
   const quizAccuracy = answeredQuiz > 0 ? Math.round((correctQuiz / answeredQuiz) * 100) : 0;
   document.getElementById('statQuizScore').textContent = `${quizAccuracy}% (${correctQuiz}/${totalQuiz})`;
 
+  const navLabel = document.getElementById('companyNavLabel');
+  if (navLabel) navLabel.textContent = `Company Intel (${APP_DATA.companies.length})`;
+  const heroJobs = document.getElementById('heroJobsCount');
+  if (heroJobs) heroJobs.textContent = `💼 ${APP_DATA.companies.length} Jobs Tracked`;
+
   // Update circular ring gradient
   const ring = document.getElementById('dashboardProgressRing');
   if (ring) {
@@ -195,13 +200,13 @@ function renderCompaniesList(companies) {
   }
 
   container.innerHTML = companies.map(c => {
-    const priorityClass = c.priority === 'High' ? 'priority-high' : (c.priority === 'Medium-High' ? 'priority-medium-high' : 'priority-medium');
+    const priorityClass = c.priority === 'Top Priority' ? 'priority-top' : (c.priority === 'High' ? 'priority-high' : (c.priority === 'Medium-High' ? 'priority-medium-high' : 'priority-medium'));
     
     return `
       <div class="company-card">
         <div class="company-top">
           <h3>${c.name}</h3>
-          <span class="priority-badge ${priorityClass}">${c.priority} Priority</span>
+          <span class="priority-badge ${priorityClass}">${c.priority.includes('Priority') ? c.priority : c.priority + ' Priority'}</span>
         </div>
 
         <div class="company-role-pill">${c.role} (${c.seniority})</div>
@@ -518,7 +523,12 @@ function restartQuiz() {
 
 // 10. Cross Navigation from Company Cards
 function openSystemDesignForCompany(companyName) {
-  const found = APP_DATA.systemDesigns.find(d => d.company.includes(companyName.split(' ')[0]));
+  const norm = companyName.toLowerCase();
+  const found = APP_DATA.systemDesigns.find(d => {
+    const dNorm = d.company.toLowerCase();
+    return norm.includes(dNorm) || dNorm.includes(norm) ||
+      dNorm.split(' ')[0] === norm.split(' ')[0];
+  });
   if (found) {
     STATE.activeHldId = found.id;
   }
@@ -527,7 +537,12 @@ function openSystemDesignForCompany(companyName) {
 }
 
 function openCodingForCompany(companyName) {
-  const found = APP_DATA.codingChallenges.find(c => c.company.includes(companyName.split(' ')[0]));
+  const norm = companyName.toLowerCase();
+  const found = APP_DATA.codingChallenges.find(c => {
+    const cNorm = c.company.toLowerCase();
+    return norm.includes(cNorm) || cNorm.includes(norm) ||
+      cNorm.split(' ')[0] === norm.split(' ')[0];
+  });
   if (found) {
     STATE.activeChallengeId = found.id;
   }

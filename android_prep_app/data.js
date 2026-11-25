@@ -199,9 +199,86 @@ const APP_DATA = {
       ],
       systemDesign: "Design an IoT smart-device management dashboard with real-time telemetry updates and remote command dispatch.",
       internals: "Android Keystore cryptographic keys, biometric prompt API, exponential backoff network retry policies, SSL pinning."
+    },
+    {
+      id: "bounteous",
+      name: "Bounteous",
+      role: "Lead Android Engineer",
+      seniority: "Lead Engineer / Architect",
+      location: "Chennai (Hybrid)",
+      workMode: "Hybrid",
+      compensation: "₹20.0 - 35.0 Lacs PA",
+      priority: "High",
+      tags: ["Design Systems", "Component Library", "Compose", "Enterprise DX"],
+      rounds: [
+        { name: "Round 1", type: "Live Coding & Advanced Kotlin", desc: "Coroutines Flow backpressure, custom Compose state hoisting, algorithmic data modeling." },
+        { name: "Round 2", type: "UI Architecture & Design Systems", desc: "Building scalable atomic UI components, SubcomposeLayout, dynamic theming tokens." },
+        { name: "Round 3", type: "Mobile System Design (HLD)", desc: "Multi-tenant white-label mobile app with server-driven layout composition." },
+        { name: "Round 4", type: "Leadership & Delivery Governance", desc: "Cross-team API contracts, accessibility compliance (WCAG), code review mentorship." }
+      ],
+      systemDesign: "Design a scalable White-Label Design System and multi-tenant Android application with dynamic remote theming, accessible components, and modular build flavors.",
+      internals: "Compose SubcomposeLayout performance penalties, measure/layout constraints, @Immutable vs @Stable contract invariants, Fastlane release automation."
+    },
+    {
+      id: "tata-elxsi",
+      name: "Tata Elxsi",
+      role: "Android Tech Lead - Media & OTT Platforms",
+      seniority: "Tech Lead / Media Specialist",
+      location: "Chennai",
+      workMode: "Hybrid / Onsite",
+      compensation: "Enterprise Competitive",
+      priority: "High",
+      tags: ["ExoPlayer", "Media3", "DRM / Widevine", "HLS / DASH", "Video Streaming"],
+      rounds: [
+        { name: "Round 1", type: "Core Android & Multithreading", desc: "Thread pools, memory management, JNI/NDK media interop, IPC with MediaBrowserService." },
+        { name: "Round 2", type: "Media Frameworks & Player SDK", desc: "ExoPlayer / Media3 architecture, DRM Widevine modular setup, HLS/DASH chunked streaming." },
+        { name: "Round 3", type: "Video Streaming System Design", desc: "High-scale OTT streaming client with adaptive bitrate (ABR), offline encrypted downloads, and PIP." },
+        { name: "Round 4", type: "Technical Leadership & Client Fitment", desc: "Architecture roadmap defense, OEM device fragmentation, SLA benchmarking (startup latency)." }
+      ],
+      systemDesign: "Design an enterprise OTT Media Player SDK (Media3 / ExoPlayer) supporting adaptive bitrate streaming, DRM Widevine license renewal, offline download sync, and Picture-in-Picture (PiP).",
+      internals: "SurfaceView vs TextureView rendering pipeline, MediaCodec hardware decoder limits, VMAF / buffer health tuning, Android TV D-Pad focus navigation."
+    },
+    {
+      id: "paypal",
+      name: "PayPal",
+      role: "Staff Software Engineer - Android (Mobile Platform)",
+      seniority: "Staff / Principal Track",
+      location: "Chennai",
+      workMode: "Hybrid (Chennai)",
+      compensation: "₹35.0 - 50.0+ Lacs PA",
+      priority: "Top Priority",
+      tags: ["Staff Track", "Fintech Security", "Payment SDK", "Hardware Keystore", "High Concurrency"],
+      rounds: [
+        { name: "Round 1", type: "High-Concurrency Problem Solving", desc: "Thread safety, atomic primitives vs Mutex, reactive state reduction, lock-free queues." },
+        { name: "Round 2", type: "Android Internals & Mobile Security", desc: "Hardware-backed KeyStore (StrongBox), BiometricPrompt crypto-object, certificate pinning, anti-tampering." },
+        { name: "Round 3", type: "Global Mobile System Design", desc: "Global Payment Checkout SDK: idempotency, network failure recovery, offline payment queue, PCI-DSS compliance." },
+        { name: "Round 4", type: "Staff Leadership & Architectural Defense", desc: "Cross-business unit SDK adoption, developer experience (DX), defining org-wide mobile reliability SLAs." }
+      ],
+      systemDesign: "Design an idempotent, high-security Mobile Payment Checkout SDK featuring biometric authentication, hardware-backed crypto verification, automated network retry queues, and zero-trust telemetry.",
+      internals: "Android StrongBox Keymaster, BiometricPrompt with Cipher initialization, OkHttp CertificatePinner dynamic rotation, R8/Proguard code obfuscation, thread-safe Mutex locks."
+    },
+    {
+      id: "hcltech",
+      name: "HCLTech",
+      role: "Senior Android Technical Lead / Architect",
+      seniority: "Technical Lead / Architect",
+      location: "Chennai",
+      workMode: "Hybrid / Onsite",
+      compensation: "₹22.0 - 28.0 Lacs PA",
+      priority: "Medium-High",
+      tags: ["Enterprise Modernization", "Clean Architecture", "CI/CD Automation", "Multi-Module"],
+      rounds: [
+        { name: "Round 1", type: "Android SDK & Jetpack Deep Dive", desc: "Coroutines Flow operators, Room SQLite indexes, WorkManager constraints, SavedStateHandle." },
+        { name: "Round 2", type: "Architecture & Code Review Simulation", desc: "Refactoring monolithic legacy apps to Clean Architecture / MVI, static analysis (Detekt/Lint)." },
+        { name: "Round 3", type: "Enterprise System Design", desc: "Offline-first field operations app with geofencing, background synchronization, and enterprise single sign-on (SSO)." },
+        { name: "Round 4", type: "Technical Delivery Management", desc: "Offshore/onshore team governance, estimation, technical risk mitigation, client architectural alignment." }
+      ],
+      systemDesign: "Design an enterprise-grade Field Operations & Asset Inspection app supporting offline-first SQLite sync, periodic WorkManager sync, geofencing, and automated crash diagnostics.",
+      internals: "Dynamic feature module classloaders, Proguard mapping deobfuscation, Baseline Profiles execution on ART, memory leak profiling with LeakCanary."
     }
   ],
 
+  codingChallenges:
   codingChallenges: [
     {
       id: "challenge-1",
@@ -1317,7 +1394,74 @@ class BitmapMemoryCache(
         { name: "Shared Design System", desc: "Mirror legacy XML styling (Theme.AppCompat) into Material 3 Compose ColorScheme & Typography to ensure visual parity during hybrid phases." }
       ]
     }
-  ],
+,
+    {
+      id: "hld-paypal",
+      title: "High-Security Idempotent Payment & Checkout SDK Architecture",
+      company: "PayPal",
+      difficulty: "Staff / Principal Level",
+      overview: "Architect an enterprise mobile payment checkout SDK with biometric authentication, hardware-backed cryptography, network idempotency, and tamper detection.",
+      diagram: `
++-------------------------------------------------------------+
+|                     HOST APPLICATION                        |
+|  Merchant App  ---> CheckoutSdk.startPayment(PaymentRequest)|
++------------------------------+------------------------------+
+                               |
+                               v
++-------------------------------------------------------------+
+|                 PAYMENT ORCHESTRATION LAYER                 |
+|  CheckoutEngine (State Machine: INIT, AUTH, CAPTURE, VERIFY)|
+|  BiometricAuthManager (BiometricPrompt + Cipher Object)     |
++---------------+-----------------------------+---------------+
+                | Crypto Operations           | Secure Transport
+                v                             v
++-----------------------------+ +-----------------------------+
+|    SECURITY SUBSYSTEM       | |   IDEMPOTENT API GATEWAY    |
+|  Android KeyStore           | |  OkHttp Interceptors        |
+|  - StrongBox / TEE KeyPair  | |  - X-Idempotency-Key (UUID) |
+|  - AES-256-GCM Payload Enc  | |  - SSL Pinning (HPKP / SHA) |
+|  - Attestation / Root Guard | |  - Offline Mutation Queue   |
++-----------------------------+ +-----------------------------+
+      `,
+      keyComponents: [
+        { name: "Hardware-Backed KeyStore (StrongBox)", desc: "Generates private keys inside the Hardware Security Module (StrongBox Keymaster) requiring user biometric authentication for key retrieval." },
+        { name: "Idempotency Token Manager", desc: "Assigns a deterministic UUIDv4 idempotency key per checkout attempt, preventing duplicate payment charges during transient network disconnects or app restarts." },
+        { name: "Certificate Pinning & Anti-Tampering", desc: "Enforces OkHttp certificatePinner with backup public key hashes and detects rooted devices (SafetyNet/Play Integrity API) before initiating payment." }
+      ]
+    },
+    {
+      id: "hld-tataelxsi",
+      title: "High-Performance Media Player & Adaptive Video Streaming Engine",
+      company: "Tata Elxsi",
+      difficulty: "Staff / Specialist Level",
+      overview: "Architect an end-to-end adaptive bitrate (ABR) OTT media player engine supporting ExoPlayer/Media3, Widevine DRM licensing, offline downloads, and background PiP.",
+      diagram: `
++-------------------------------------------------------------+
+|                     PRESENTATION LAYER                       |
+|   Compose PlayerView (SurfaceView)  <--->  MediaControls    |
++------------------------------+------------------------------+
+                               | Player Commands
+                               v
++-------------------------------------------------------------+
+|                 MEDIA3 PLAYER CORE ENGINE                   |
+|  ExoPlayer Instance  +  DefaultTrackSelector (ABR Rule)     |
+|  MediaSession / MediaBrowserService (Background & PiP)      |
++---------------+-----------------------------+---------------+
+                | DRM License Exchange        | Media Chunk Feeder
+                v                             v
++-----------------------------+ +-----------------------------+
+|       DRM SUBSYSTEM         | |     CACHING & NETWORK       |
+|  Widevine Modular DRM       | |  SimpleCache (LRU Disk)     |
+|  - DrmSessionManager        | |  - Chunked HLS / DASH Seg   |
+|  - MediaDrmCallback         | |  - BandwidthMeter (Throughput|
++-----------------------------+ +-----------------------------+
+      `,
+      keyComponents: [
+        { name: "Media3 / ExoPlayer SurfaceView Rendering", desc: "Uses SurfaceView over TextureView to eliminate extra compositing passes, achieving 60FPS 4K playback and reducing GPU power consumption by 30%." },
+        { name: "Adaptive Bitrate (ABR) BandwidthMeter", desc: "Dynamically measures network throughput across packet chunks to switch HLS/DASH video rendition profiles smoothly without playback rebuffering." },
+        { name: "Widevine DRM & Offline Storage", desc: "Integrates DrmSessionManager to fetch and renew Widevine modular licenses, caching encrypted video segments to disk via SimpleCache for offline playback." }
+      ]
+    }  ],
 
   quizQuestions: [
     {
@@ -1392,7 +1536,31 @@ class BitmapMemoryCache(
       correctIndex: 1,
       explanation: "'GlobalScope' launches top-level coroutines tied to the application lifetime. If it captures references to a ViewModel or Activity, they cannot be garbage collected when destroyed. Always use 'viewModelScope' which is automatically cancelled in 'onCleared()'."
     }
-  ]
+,
+    {
+      id: "q7",
+      question: "In Android security, what is the key advantage of using StrongBox Keymaster over the standard TEE (Trusted Execution Environment) for cryptographic keys?",
+      options: [
+        "StrongBox executes encryption on the cloud rather than on-device.",
+        "StrongBox uses dedicated hardware (a separate CPU, memory, and secure flash) physically isolated from the main processor.",
+        "StrongBox allows private keys to be exported and inspected by unit tests.",
+        "StrongBox supports unlimited key storage compared to TEE."
+      ],
+      correctIndex: 1,
+      explanation: "StrongBox Keymaster operates on a physically distinct hardware chip (with dedicated CPU, secure RAM, and tamper-resistant flash storage), providing hardware-level resilience against side-channel and physical snooping attacks, whereas standard TEE shares CPU cycles with the host OS."
+    },
+    {
+      id: "q8",
+      question: "Why is SurfaceView preferred over TextureView for high-resolution video playback in Android ExoPlayer applications?",
+      options: [
+        "SurfaceView supports CSS opacity and rotation animations, whereas TextureView does not.",
+        "SurfaceView composites its content directly to the hardware display subsystem (SurfaceFlinger) in a dedicated window layer, bypassing the View hierarchy and saving memory bandwidth.",
+        "TextureView does not support hardware acceleration on Android 10+.",
+        "SurfaceView cannot be used with Jetpack Compose."
+      ],
+      correctIndex: 1,
+      explanation: "SurfaceView punches a hole directly through the window to a dedicated surface composited directly by SurfaceFlinger, saving GPU bandwidth and power. TextureView behaves as a regular View in the hierarchy (requiring an extra OpenGL composition step), which introduces 1-3 frames of latency and higher battery drain."
+    }  ]
 };
 
 // Expose globally
