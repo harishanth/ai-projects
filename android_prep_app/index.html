@@ -23,34 +23,34 @@
             <span class="badge badge-lead">10-11 Yrs Lead</span>
           </div>
         </div>
-        <button id="sidebarCollapseBtn" class="sidebar-toggle-btn" title="Collapse sidebar menu (Alt+B)" aria-label="Collapse sidebar">
+        <button id="sidebarCollapseBtn" class="sidebar-toggle-btn" title="Collapse sidebar menu (Alt+B)" aria-label="Collapse sidebar" onclick="toggleSidebar()">
           <span class="toggle-icon">◀</span>
         </button>
       </div>
 
       <nav class="nav-menu" role="tablist">
-        <button class="nav-item active" data-tab="dashboard" role="tab" aria-selected="true" title="Dashboard" data-tooltip="Dashboard">
+        <button class="nav-item active" data-tab="dashboard" role="tab" aria-selected="true" title="Dashboard" data-tooltip="Dashboard" onclick="switchTab('dashboard')">
           <span class="nav-icon">📊</span>
           <span class="nav-label"><span class="full-label">Dashboard</span><span class="short-label">Home</span></span>
         </button>
-        <button class="nav-item" data-tab="companies" role="tab" aria-selected="false" title="Company Intel" data-tooltip="Company Intel">
+        <button class="nav-item" data-tab="companies" role="tab" aria-selected="false" title="Company Intel" data-tooltip="Company Intel" onclick="switchTab('companies')">
           <span class="nav-icon">🏢</span>
           <span class="nav-label"><span class="full-label" id="companyNavLabel">Company Intel (14)</span><span class="short-label">Intel</span></span>
         </button>
-        <button class="nav-item" data-tab="coding" role="tab" aria-selected="false" title="Coding Arena" data-tooltip="Coding Arena">
+        <button class="nav-item" data-tab="coding" role="tab" aria-selected="false" title="Coding Arena" data-tooltip="Coding Arena" onclick="switchTab('coding')">
           <span class="nav-icon">💻</span>
           <span class="nav-label"><span class="full-label">Coding Arena</span><span class="short-label">Coding</span></span>
           <span class="nav-counter" id="solvedCounter">0/10</span>
         </button>
-        <button class="nav-item" data-tab="system-design" role="tab" aria-selected="false" title="System Design Studio" data-tooltip="System Design">
+        <button class="nav-item" data-tab="system-design" role="tab" aria-selected="false" title="System Design Studio" data-tooltip="System Design" onclick="switchTab('system-design')">
           <span class="nav-icon">🏛️</span>
           <span class="nav-label"><span class="full-label">System Design Studio</span><span class="short-label">Design</span></span>
         </button>
-        <button class="nav-item" data-tab="quiz" role="tab" aria-selected="false" title="Internals Quiz" data-tooltip="Internals Quiz">
+        <button class="nav-item" data-tab="quiz" role="tab" aria-selected="false" title="Internals Quiz" data-tooltip="Internals Quiz" onclick="switchTab('quiz')">
           <span class="nav-icon">🧠</span>
           <span class="nav-label"><span class="full-label">Internals Quiz</span><span class="short-label">Quiz</span></span>
         </button>
-        <button class="nav-item" data-tab="cheatsheet" role="tab" aria-selected="false" title="Cheat Sheets" data-tooltip="Cheat Sheets">
+        <button class="nav-item" data-tab="cheatsheet" role="tab" aria-selected="false" title="Cheat Sheets" data-tooltip="Cheat Sheets" onclick="switchTab('cheatsheet')">
           <span class="nav-icon">⚡</span>
           <span class="nav-label"><span class="full-label">Cheat Sheets</span><span class="short-label">Cheats</span></span>
         </button>
@@ -73,7 +73,7 @@
       
       <!-- Top Action Bar -->
       <header class="top-bar">
-        <button id="topbarMenuBtn" class="icon-btn topbar-menu-btn" title="Toggle Navigation Sidebar (Alt+B)" aria-label="Toggle Sidebar">
+        <button id="topbarMenuBtn" class="icon-btn topbar-menu-btn" title="Toggle Navigation Sidebar (Alt+B)" aria-label="Toggle Sidebar" onclick="toggleSidebar()">
           <span class="hamburger-icon">☰</span>
         </button>
 
@@ -104,39 +104,39 @@
 
           <!-- Color Palette Picker Dropdown -->
           <div class="palette-picker-wrapper">
-            <button id="palettePickerBtn" class="icon-btn palette-btn" title="Choose Color Theme" aria-label="Choose Color Theme" aria-expanded="false">
+            <button id="palettePickerBtn" class="icon-btn palette-btn" title="Choose Color Theme" aria-label="Choose Color Theme" aria-expanded="false" onclick="togglePaletteDropdown(event)">
               <span class="palette-icon">🎨</span>
               <span class="current-color-dot" id="currentColorDot"></span>
             </button>
             <div class="palette-dropdown" id="paletteDropdown" role="menu" aria-label="Color Variations">
               <div class="palette-dropdown-header">Color Variation</div>
               <div class="palette-options">
-                <button class="palette-option-btn active" data-palette="blue" role="menuitem">
+                <button class="palette-option-btn active" data-palette="blue" role="menuitem" onclick="setThemeColor('blue')">
                   <span class="palette-swatch" style="background: #3b82f6;"></span>
                   <span class="palette-label">Tech Blue</span>
                   <span class="palette-check">✓</span>
                 </button>
-                <button class="palette-option-btn" data-palette="emerald" role="menuitem">
+                <button class="palette-option-btn" data-palette="emerald" role="menuitem" onclick="setThemeColor('emerald')">
                   <span class="palette-swatch" style="background: #10b981;"></span>
                   <span class="palette-label">Android Emerald</span>
                   <span class="palette-check">✓</span>
                 </button>
-                <button class="palette-option-btn" data-palette="violet" role="menuitem">
+                <button class="palette-option-btn" data-palette="violet" role="menuitem" onclick="setThemeColor('violet')">
                   <span class="palette-swatch" style="background: #a855f7;"></span>
                   <span class="palette-label">Jetpack Violet</span>
                   <span class="palette-check">✓</span>
                 </button>
-                <button class="palette-option-btn" data-palette="amber" role="menuitem">
+                <button class="palette-option-btn" data-palette="amber" role="menuitem" onclick="setThemeColor('amber')">
                   <span class="palette-swatch" style="background: #f59e0b;"></span>
                   <span class="palette-label">Sunset Amber</span>
                   <span class="palette-check">✓</span>
                 </button>
-                <button class="palette-option-btn" data-palette="rose" role="menuitem">
+                <button class="palette-option-btn" data-palette="rose" role="menuitem" onclick="setThemeColor('rose')">
                   <span class="palette-swatch" style="background: #f43f5e;"></span>
                   <span class="palette-label">Crimson Rose</span>
                   <span class="palette-check">✓</span>
                 </button>
-                <button class="palette-option-btn" data-palette="cyan" role="menuitem">
+                <button class="palette-option-btn" data-palette="cyan" role="menuitem" onclick="setThemeColor('cyan')">
                   <span class="palette-swatch" style="background: #06b6d4;"></span>
                   <span class="palette-label">Cyber Cyan</span>
                   <span class="palette-check">✓</span>
@@ -145,11 +145,11 @@
             </div>
           </div>
           
-          <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode">
+          <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode" onclick="toggleTheme()">
             <span class="theme-icon">🌙</span>
           </button>
 
-          <button id="geminiKeyBtn" class="ai-key-btn" title="Configure Gemini API Key (BYOK)" aria-label="Configure Gemini API Key">
+          <button id="geminiKeyBtn" class="ai-key-btn" title="Configure Gemini API Key (BYOK)" aria-label="Configure Gemini API Key" onclick="openGeminiModal()">
             <span class="ai-btn-icon">🤖</span>
             <span class="ai-btn-label">Gemini AI</span>
             <span class="ai-status-indicator" id="geminiStatusDot" title="Key not configured"></span>
@@ -497,7 +497,7 @@
             <small style="color: var(--text-muted); font-size: 12px;">Zero server tracking. Key is kept strictly in your local browser.</small>
           </div>
         </div>
-        <button type="button" class="modal-close-btn" id="closeGeminiModalBtn" aria-label="Close">&times;</button>
+        <button type="button" class="modal-close-btn" id="closeGeminiModalBtn" aria-label="Close" onclick="closeGeminiModal()">&times;</button>
       </div>
 
       <div class="modal-body">

@@ -39,7 +39,7 @@ function getAllChallenges() {
 }
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   initTheme();
   initColorPalette();
   initSidebar();
@@ -56,22 +56,45 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSystemDesign();
   renderQuiz();
   updateReadiness();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 // 1. Theme & Color Management
+function toggleTheme() {
+  STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', STATE.theme);
+  localStorage.setItem('theme', STATE.theme);
+  const themeBtn = document.getElementById('themeToggleBtn');
+  if (themeBtn) {
+    const icon = themeBtn.querySelector('.theme-icon');
+    if (icon) icon.textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
+  }
+  updateReadiness();
+}
+
 function initTheme() {
   document.documentElement.setAttribute('data-theme', STATE.theme);
   const themeBtn = document.getElementById('themeToggleBtn');
   if (themeBtn) {
-    themeBtn.querySelector('.theme-icon').textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
+    const icon = themeBtn.querySelector('.theme-icon');
+    if (icon) icon.textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
+    themeBtn.addEventListener('click', toggleTheme);
+  }
+}
 
-    themeBtn.addEventListener('click', () => {
-      STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', STATE.theme);
-      localStorage.setItem('theme', STATE.theme);
-      themeBtn.querySelector('.theme-icon').textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
-      updateReadiness();
-    });
+function togglePaletteDropdown(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const pickerBtn = document.getElementById('palettePickerBtn');
+  const dropdown = document.getElementById('paletteDropdown');
+  if (pickerBtn && dropdown) {
+    const isExpanded = pickerBtn.getAttribute('aria-expanded') === 'true';
+    pickerBtn.setAttribute('aria-expanded', !isExpanded);
+    dropdown.classList.toggle('show');
   }
 }
 
@@ -83,12 +106,7 @@ function initColorPalette() {
   const dropdown = document.getElementById('paletteDropdown');
 
   if (pickerBtn && dropdown) {
-    pickerBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isExpanded = pickerBtn.getAttribute('aria-expanded') === 'true';
-      pickerBtn.setAttribute('aria-expanded', !isExpanded);
-      dropdown.classList.toggle('show');
-    });
+    pickerBtn.addEventListener('click', togglePaletteDropdown);
 
     dropdown.querySelectorAll('.palette-option-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -129,6 +147,15 @@ function updatePaletteUI(colorName) {
   });
 }
 
+function toggleSidebar() {
+  const sidebar = document.getElementById('appSidebar');
+  STATE.sidebarCollapsed = !STATE.sidebarCollapsed;
+  if (sidebar) {
+    sidebar.classList.toggle('collapsed', STATE.sidebarCollapsed);
+  }
+  localStorage.setItem('sidebar_collapsed', STATE.sidebarCollapsed);
+}
+
 // 2. Expandable / Collapsible Sidebar Management
 function initSidebar() {
   const sidebar = document.getElementById('appSidebar');
@@ -137,14 +164,6 @@ function initSidebar() {
 
   if (sidebar && STATE.sidebarCollapsed) {
     sidebar.classList.add('collapsed');
-  }
-
-  function toggleSidebar() {
-    STATE.sidebarCollapsed = !STATE.sidebarCollapsed;
-    if (sidebar) {
-      sidebar.classList.toggle('collapsed', STATE.sidebarCollapsed);
-    }
-    localStorage.setItem('sidebar_collapsed', STATE.sidebarCollapsed);
   }
 
   if (collapseBtn) {
@@ -220,14 +239,14 @@ function toggleMaximize(targetSelectorOrElement, title = 'Focus Workspace') {
 }
 
 function exitMaximize() {
-  if (STATE.maximizedElement) {
-    STATE.maximizedElement.classList.remove('is-maximized');
-    const toolbar = STATE.maximizedElement.querySelector('.maximized-toolbar');
+  document.querySelectorAll('.is-maximized').forEach(el => {
+    el.classList.remove('is-maximized');
+    const toolbar = el.querySelector('.maximized-toolbar');
     if (toolbar) {
       toolbar.remove();
     }
-    STATE.maximizedElement = null;
-  }
+  });
+  STATE.maximizedElement = null;
   document.body.classList.remove('has-maximized-section');
 }
 
@@ -261,6 +280,10 @@ function initNavigation() {
 }
 
 function switchTab(tabId) {
+  if (typeof exitMaximize === 'function') {
+    exitMaximize();
+  }
+
   STATE.currentTab = tabId;
   
   // Update sidebar active buttons
@@ -283,13 +306,28 @@ function switchTab(tabId) {
     targetPanel.classList.add('active');
   }
 
-  // Ensure content is immediately rendered when switching to System Design
+  // Ensure content is immediately rendered when switching to specific tabs
   if (tabId === 'system-design' || tabId === 'systemDesign') {
     renderSystemDesign();
+  } else if (tabId === 'coding') {
+    renderCodingArena();
+  } else if (tabId === 'companies') {
+    renderCompanies();
+  } else if (tabId === 'quiz') {
+    renderQuiz();
   }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  const mainContent = document.querySelector('.main-content');
+  if (mainContent) {
+    mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
+
+// Global exposure for resilient inline onclick tap handlers
+window.switchTab = switchTab;
+window.toggleMaximize = toggleMaximize;
+window.exitMaximize = exitMaximize;
 
 // 3. Overall Readiness Score Calculation
 function updateReadiness() {
@@ -1191,3 +1229,14 @@ function closeGeminiModal() {
     modal.removeAttribute('open');
   }
 }
+
+// Global window exposures for resilient inline HTML and mobile tap handlers
+window.switchTab = switchTab;
+window.toggleMaximize = toggleMaximize;
+window.exitMaximize = exitMaximize;
+window.toggleTheme = toggleTheme;
+window.togglePaletteDropdown = togglePaletteDropdown;
+window.toggleSidebar = toggleSidebar;
+window.setThemeColor = setThemeColor;
+window.openGeminiModal = openGeminiModal;
+window.closeGeminiModal = closeGeminiModal;
