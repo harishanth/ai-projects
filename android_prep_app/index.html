@@ -14,7 +14,7 @@
   <div class="app-layout">
     
     <!-- Sidebar Navigation -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="appSidebar">
       <div class="sidebar-header">
         <div class="brand">
           <div class="brand-icon">🤖</div>
@@ -23,38 +23,41 @@
             <span class="badge badge-lead">10-11 Yrs Lead</span>
           </div>
         </div>
+        <button id="sidebarCollapseBtn" class="sidebar-toggle-btn" title="Collapse sidebar menu (Alt+B)" aria-label="Collapse sidebar">
+          <span class="toggle-icon">◀</span>
+        </button>
       </div>
 
       <nav class="nav-menu" role="tablist">
-        <button class="nav-item active" data-tab="dashboard" role="tab" aria-selected="true" title="Dashboard">
+        <button class="nav-item active" data-tab="dashboard" role="tab" aria-selected="true" title="Dashboard" data-tooltip="Dashboard">
           <span class="nav-icon">📊</span>
           <span class="nav-label"><span class="full-label">Dashboard</span><span class="short-label">Home</span></span>
         </button>
-        <button class="nav-item" data-tab="companies" role="tab" aria-selected="false" title="Company Intel">
+        <button class="nav-item" data-tab="companies" role="tab" aria-selected="false" title="Company Intel" data-tooltip="Company Intel">
           <span class="nav-icon">🏢</span>
           <span class="nav-label"><span class="full-label" id="companyNavLabel">Company Intel (14)</span><span class="short-label">Intel</span></span>
         </button>
-        <button class="nav-item" data-tab="coding" role="tab" aria-selected="false" title="Coding Arena">
+        <button class="nav-item" data-tab="coding" role="tab" aria-selected="false" title="Coding Arena" data-tooltip="Coding Arena">
           <span class="nav-icon">💻</span>
           <span class="nav-label"><span class="full-label">Coding Arena</span><span class="short-label">Coding</span></span>
           <span class="nav-counter" id="solvedCounter">0/10</span>
         </button>
-        <button class="nav-item" data-tab="system-design" role="tab" aria-selected="false" title="System Design Studio">
+        <button class="nav-item" data-tab="system-design" role="tab" aria-selected="false" title="System Design Studio" data-tooltip="System Design">
           <span class="nav-icon">🏛️</span>
           <span class="nav-label"><span class="full-label">System Design Studio</span><span class="short-label">Design</span></span>
         </button>
-        <button class="nav-item" data-tab="quiz" role="tab" aria-selected="false" title="Internals Quiz">
+        <button class="nav-item" data-tab="quiz" role="tab" aria-selected="false" title="Internals Quiz" data-tooltip="Internals Quiz">
           <span class="nav-icon">🧠</span>
           <span class="nav-label"><span class="full-label">Internals Quiz</span><span class="short-label">Quiz</span></span>
         </button>
-        <button class="nav-item" data-tab="cheatsheet" role="tab" aria-selected="false" title="Cheat Sheets">
+        <button class="nav-item" data-tab="cheatsheet" role="tab" aria-selected="false" title="Cheat Sheets" data-tooltip="Cheat Sheets">
           <span class="nav-icon">⚡</span>
           <span class="nav-label"><span class="full-label">Cheat Sheets</span><span class="short-label">Cheats</span></span>
         </button>
       </nav>
 
       <div class="sidebar-footer">
-        <a href="https://docs.google.com/spreadsheets/d/1YkA9gZH8PYWQV1GyPNQLYX9Eh6oAXiYPw1uWs2oLaDw/edit" target="_blank" rel="noopener noreferrer" class="sheet-link-btn">
+        <a href="https://docs.google.com/spreadsheets/d/1YkA9gZH8PYWQV1GyPNQLYX9Eh6oAXiYPw1uWs2oLaDw/edit" target="_blank" rel="noopener noreferrer" class="sheet-link-btn" title="Open Google Sheet">
           <span class="sheet-icon">📈</span>
           <div class="sheet-text">
             <strong>Open Google Sheet</strong>
@@ -70,6 +73,10 @@
       
       <!-- Top Action Bar -->
       <header class="top-bar">
+        <button id="topbarMenuBtn" class="icon-btn topbar-menu-btn" title="Toggle Navigation Sidebar (Alt+B)" aria-label="Toggle Sidebar">
+          <span class="hamburger-icon">☰</span>
+        </button>
+
         <div class="mobile-brand-bar">
           <div class="brand">
             <div class="brand-icon">🤖</div>
@@ -94,9 +101,58 @@
             <span class="pulse-dot"></span>
             <span id="readinessScoreText">Readiness: 35%</span>
           </div>
+
+          <!-- Color Palette Picker Dropdown -->
+          <div class="palette-picker-wrapper">
+            <button id="palettePickerBtn" class="icon-btn palette-btn" title="Choose Color Theme" aria-label="Choose Color Theme" aria-expanded="false">
+              <span class="palette-icon">🎨</span>
+              <span class="current-color-dot" id="currentColorDot"></span>
+            </button>
+            <div class="palette-dropdown" id="paletteDropdown" role="menu" aria-label="Color Variations">
+              <div class="palette-dropdown-header">Color Variation</div>
+              <div class="palette-options">
+                <button class="palette-option-btn active" data-palette="blue" role="menuitem">
+                  <span class="palette-swatch" style="background: #3b82f6;"></span>
+                  <span class="palette-label">Tech Blue</span>
+                  <span class="palette-check">✓</span>
+                </button>
+                <button class="palette-option-btn" data-palette="emerald" role="menuitem">
+                  <span class="palette-swatch" style="background: #10b981;"></span>
+                  <span class="palette-label">Android Emerald</span>
+                  <span class="palette-check">✓</span>
+                </button>
+                <button class="palette-option-btn" data-palette="violet" role="menuitem">
+                  <span class="palette-swatch" style="background: #a855f7;"></span>
+                  <span class="palette-label">Jetpack Violet</span>
+                  <span class="palette-check">✓</span>
+                </button>
+                <button class="palette-option-btn" data-palette="amber" role="menuitem">
+                  <span class="palette-swatch" style="background: #f59e0b;"></span>
+                  <span class="palette-label">Sunset Amber</span>
+                  <span class="palette-check">✓</span>
+                </button>
+                <button class="palette-option-btn" data-palette="rose" role="menuitem">
+                  <span class="palette-swatch" style="background: #f43f5e;"></span>
+                  <span class="palette-label">Crimson Rose</span>
+                  <span class="palette-check">✓</span>
+                </button>
+                <button class="palette-option-btn" data-palette="cyan" role="menuitem">
+                  <span class="palette-swatch" style="background: #06b6d4;"></span>
+                  <span class="palette-label">Cyber Cyan</span>
+                  <span class="palette-check">✓</span>
+                </button>
+              </div>
+            </div>
+          </div>
           
           <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode">
             <span class="theme-icon">🌙</span>
+          </button>
+
+          <button id="geminiKeyBtn" class="ai-key-btn" title="Configure Gemini API Key (BYOK)" aria-label="Configure Gemini API Key">
+            <span class="ai-btn-icon">🤖</span>
+            <span class="ai-btn-label">Gemini AI</span>
+            <span class="ai-status-indicator" id="geminiStatusDot" title="Key not configured"></span>
           </button>
         </div>
       </header>
@@ -106,6 +162,17 @@
         
         <!-- Tab 1: Dashboard -->
         <section id="dashboardView" class="view-panel active">
+          <div class="view-section-header">
+            <div>
+              <h2 style="font-size: 20px; font-weight: 700;">Executive Dashboard</h2>
+              <span style="font-size: 13px; color: var(--text-muted);">Overview of prep readiness, targeted roles & focus pillars</span>
+            </div>
+            <button class="section-maximize-btn" onclick="toggleMaximize('#dashboardView', 'Dashboard Overview')" title="Maximize Dashboard to Declutter">
+              <span class="max-icon">⛶</span>
+              <span class="max-label">Maximize</span>
+            </button>
+          </div>
+
           <div class="dashboard-hero">
             <div class="hero-content">
               <h1>Android Lead & Architect Interview Hub</h1>
@@ -132,9 +199,14 @@
           </div>
 
           <!-- Strategic Pillars Grid -->
-          <div class="section-title">
-            <h3>Strategic Preparation Pillars</h3>
-            <span class="subtext">Categorized from your target companies' evaluation criteria</span>
+          <div class="section-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <h3>Strategic Preparation Pillars</h3>
+              <span class="subtext">Categorized from your target companies' evaluation criteria</span>
+            </div>
+            <button class="section-maximize-btn" onclick="toggleMaximize('.pillars-grid', 'Strategic Preparation Pillars')" title="Maximize Strategic Pillars">
+              <span class="max-icon">⛶</span> Maximize Pillars
+            </button>
           </div>
 
           <div class="pillars-grid">
@@ -226,6 +298,10 @@
                 <option value="High">High Priority Only</option>
                 <option value="Medium-High">Medium-High</option>
               </select>
+              <button class="section-maximize-btn" onclick="toggleMaximize('#companiesView', 'Company Intel & Pipelines')" title="Maximize Company Intel to Declutter">
+                <span class="max-icon">⛶</span>
+                <span class="max-label">Maximize</span>
+              </button>
             </div>
           </div>
 
@@ -236,6 +312,17 @@
 
         <!-- Tab 3: Coding Arena -->
         <section id="codingView" class="view-panel">
+          <div class="view-section-header">
+            <div>
+              <h2 style="font-size: 20px; font-weight: 700;">Lead Coding Arena</h2>
+              <span style="font-size: 13px; color: var(--text-muted);">Production Kotlin challenges: Concurrency, Coroutines, Custom Modifiers</span>
+            </div>
+            <button class="section-maximize-btn" onclick="toggleMaximize('#codingView', 'Coding Arena')" title="Maximize Coding Arena View">
+              <span class="max-icon">⛶</span>
+              <span class="max-label">Maximize View</span>
+            </button>
+          </div>
+
           <div class="coding-layout">
             <!-- Problem Selector Sidebar -->
             <div class="challenge-sidebar">
@@ -262,8 +349,14 @@
               <h2>Mobile High-Level System Design (HLD)</h2>
               <p>Production architectural blueprints, layered design, and trade-off considerations.</p>
             </div>
-            <div class="hld-tabs" id="hldTabs">
-              <!-- Dynamically populated -->
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div class="hld-tabs" id="hldTabs">
+                <!-- Dynamically populated -->
+              </div>
+              <button class="section-maximize-btn" onclick="toggleMaximize('#system-designView', 'System Design Studio')" title="Maximize System Design Studio">
+                <span class="max-icon">⛶</span>
+                <span class="max-label">Maximize View</span>
+              </button>
             </div>
           </div>
 
@@ -280,8 +373,14 @@
                 <h2>Android & Kotlin Lead Interview Quiz</h2>
                 <p>Timed mock assessment on runtime internals, coroutines semantics, and memory profiling.</p>
               </div>
-              <div class="quiz-score-badge" id="quizStatusBadge">
-                Question <span id="currentQuestionNum">1</span> of <span id="totalQuestionsNum">6</span>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <div class="quiz-score-badge" id="quizStatusBadge">
+                  Question <span id="currentQuestionNum">1</span> of <span id="totalQuestionsNum">6</span>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('.quiz-container', 'Internals Quiz Exam Focus')" title="Maximize Quiz Exam to Declutter">
+                  <span class="max-icon">⛶</span>
+                  <span class="max-label">Focus Exam</span>
+                </button>
               </div>
             </div>
 
@@ -298,13 +397,22 @@
               <h2>Lead Engineer Fast Reference Cards</h2>
               <p>Key syntax, pitfalls, and architectural principles to review before an interview.</p>
             </div>
+            <button class="section-maximize-btn" onclick="toggleMaximize('#cheatsheetView', 'Cheat Sheets Reference')" title="Maximize Cheat Sheets to Declutter">
+              <span class="max-icon">⛶</span>
+              <span class="max-label">Maximize</span>
+            </button>
           </div>
 
           <div class="cheatsheet-grid">
-            <div class="cheat-card">
+            <div class="cheat-card" id="cheatCompose">
               <div class="cheat-header">
-                <span class="cheat-icon">🔄</span>
-                <h3>Compose Stability & Skipping Rules</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">🔄</span>
+                  <h3>Compose Stability & Skipping Rules</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatCompose', 'Compose Stability & Skipping')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
               </div>
               <ul class="cheat-list">
                 <li><strong>List&lt;T&gt; is UNSTABLE:</strong> Standard interfaces cannot guarantee immutability. Use <code>ImmutableList&lt;T&gt;</code> or annotate data classes with <code>@Immutable</code>.</li>
@@ -314,10 +422,15 @@
               </ul>
             </div>
 
-            <div class="cheat-card">
+            <div class="cheat-card" id="cheatCoroutines">
               <div class="cheat-header">
-                <span class="cheat-icon">🧵</span>
-                <h3>Coroutines & Structured Concurrency</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">🧵</span>
+                  <h3>Coroutines & Structured Concurrency</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatCoroutines', 'Coroutines & Structured Concurrency')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
               </div>
               <ul class="cheat-list">
                 <li><strong>Job vs SupervisorJob:</strong> In standard <code>Job</code>, any child failure cancels the parent and siblings. <code>SupervisorJob</code> isolates failures to the failing child only.</li>
@@ -327,10 +440,15 @@
               </ul>
             </div>
 
-            <div class="cheat-card">
+            <div class="cheat-card" id="cheatPlatform">
               <div class="cheat-header">
-                <span class="cheat-icon">📱</span>
-                <h3>Android 14 & 15 Platform Changes</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">📱</span>
+                  <h3>Android 14 & 15 Platform Changes</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatPlatform', 'Android 14 & 15 Platform Changes')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
               </div>
               <ul class="cheat-list">
                 <li><strong>Strict FGS Types:</strong> Foreground Services MUST declare explicit <code>foregroundServiceType</code> in both AndroidManifest and in <code>startForeground()</code>.</li>
@@ -340,10 +458,15 @@
               </ul>
             </div>
 
-            <div class="cheat-card">
+            <div class="cheat-card" id="cheatSecurity">
               <div class="cheat-header">
-                <span class="cheat-icon">🛡️</span>
-                <h3>OWASP Mobile Top 10 Security Checklist</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">🛡️</span>
+                  <h3>OWASP Mobile Top 10 Security Checklist</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatSecurity', 'OWASP Mobile Top 10 Security')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
               </div>
               <ul class="cheat-list">
                 <li><strong>Android Keystore:</strong> Generate cryptographic AES-GCM keys inside hardware-backed TEE / StrongBox; never hardcode salt or keys in source code.</li>
@@ -363,8 +486,74 @@
 
 
 
+  <!-- Gemini API Key Settings Dialog (BYOK) -->
+  <dialog id="geminiModal" class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">🤖</span>
+          <div>
+            <h3>Gemini AI Settings (Bring Your Own Key)</h3>
+            <small style="color: var(--text-muted); font-size: 12px;">Zero server tracking. Key is kept strictly in your local browser.</small>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeGeminiModalBtn" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="ai-modal-intro">
+          <p>
+            Power interactive coding reviews, staff interview grilling, and concurrency deep-dives using <strong>Google Gemini API</strong>.
+          </p>
+          <div class="ai-security-callout">
+            <span class="callout-icon">🔒</span>
+            <div class="callout-text">
+              <strong>100% Client-Side & Free Tier Compatible:</strong>
+              Your API key is saved solely in your browser's <code>localStorage</code> and transmitted directly to Google's API endpoints. It is never stored on GitHub Pages or any intermediate server.
+            </div>
+          </div>
+        </div>
+
+        <div class="ai-form-group">
+          <label for="geminiApiKeyInput">
+            <strong>Gemini API Key:</strong>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="ext-link">
+              Get Free Key from Google AI Studio ↗
+            </a>
+          </label>
+          <div class="ai-input-wrapper">
+            <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." autocomplete="off" spellcheck="false">
+            <button type="button" class="btn-toggle-eye" id="toggleApiKeyVisibility" title="Show / Hide Key">👁️</button>
+          </div>
+          <span class="input-hint" id="apiKeyStatusHint">No key configured.</span>
+        </div>
+
+        <div class="ai-form-group">
+          <label for="geminiModelSelect"><strong>Gemini Model:</strong></label>
+          <select id="geminiModelSelect" class="ai-select">
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended - Fastest & High Reasoning)</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Reliable Free Tier)</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Deep Architecture Analysis)</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+          </select>
+        </div>
+
+        <div id="geminiTestResult" class="ai-test-result" style="display: none;"></div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn-sm btn-secondary" id="clearGeminiKeyBtn">Remove Key</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-sm btn-secondary" id="testGeminiKeyBtn">⚡ Test Connection</button>
+          <button type="button" class="btn-sm btn-primary" id="saveGeminiKeyBtn">Save & Apply</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Scripts -->
   <script src="data.js"></script>
+  <script src="gemini-service.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

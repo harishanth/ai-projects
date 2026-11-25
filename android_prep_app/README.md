@@ -2,7 +2,8 @@
 
 An interactive technical interview preparation hub tailored for **Senior Android Developers**, **Android Tech Leads**, and **Staff Mobile Engineers** (10–11 Years Experience). Grounded in real-time hiring criteria and active job tracking across Chennai and Remote markets.
 
-🔗 **Live GitHub Pages App:** [https://harishanth.github.io/android-prep-app/](https://harishanth.github.io/android-prep-app/)  
+🔗 **Live GitHub Pages App:** [https://harishanth.github.io/ai-projects/](https://harishanth.github.io/ai-projects/)  
+📁 **GitHub Repository:** [https://github.com/harishanth/ai-projects](https://github.com/harishanth/ai-projects)  
 📊 **Live Naukri Google Sheet Tracker:** [Google Sheet Link](https://docs.google.com/spreadsheets/d/1YkA9gZH8PYWQV1GyPNQLYX9Eh6oAXiYPw1uWs2oLaDw/edit)
 
 ---
