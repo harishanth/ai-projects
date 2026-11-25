@@ -4,6 +4,9 @@
 const STATE = {
   currentTab: 'dashboard',
   theme: localStorage.getItem('theme') || 'dark',
+  themeColor: localStorage.getItem('theme_color') || 'blue',
+  sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true',
+  maximizedElement: null,
   solvedChallenges: JSON.parse(localStorage.getItem('solved_challenges') || '[]'),
   viewedHld: JSON.parse(localStorage.getItem('viewed_hld') || '[]'),
   quizState: {
@@ -13,7 +16,22 @@ const STATE = {
   },
   activeChallengeId: APP_DATA.codingChallenges[0].id,
   activeHldId: APP_DATA.systemDesigns[0].id,
-  codeTab: 'solution' // 'solution' | 'explanation'
+  codeTab: 'solution', // 'solution' | 'explanation' | 'ai'
+  aiState: {
+    loading: false,
+    activeChallengeId: null,
+    response: {},
+    lastQuestion: {}
+  }
+};
+
+const COLOR_PALETTES = {
+  blue: { label: 'Tech Blue', color: '#3b82f6' },
+  emerald: { label: 'Android Emerald', color: '#10b981' },
+  violet: { label: 'Jetpack Violet', color: '#a855f7' },
+  amber: { label: 'Sunset Amber', color: '#f59e0b' },
+  rose: { label: 'Crimson Rose', color: '#f43f5e' },
+  cyan: { label: 'Cyber Cyan', color: '#06b6d4' }
 };
 
 function getAllChallenges() {
@@ -23,9 +41,13 @@ function getAllChallenges() {
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  initColorPalette();
+  initSidebar();
   initNavigation();
   initGlobalSearch();
   initCompanyFilters();
+  initGeminiUI();
+  initMaximizeKeyboard();
   
   // Render Components
   renderDashboard();
@@ -36,17 +58,184 @@ document.addEventListener('DOMContentLoaded', () => {
   updateReadiness();
 });
 
-// 1. Theme Management
+// 1. Theme & Color Management
 function initTheme() {
   document.documentElement.setAttribute('data-theme', STATE.theme);
   const themeBtn = document.getElementById('themeToggleBtn');
-  themeBtn.querySelector('.theme-icon').textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
-
-  themeBtn.addEventListener('click', () => {
-    STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', STATE.theme);
-    localStorage.setItem('theme', STATE.theme);
+  if (themeBtn) {
     themeBtn.querySelector('.theme-icon').textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
+
+    themeBtn.addEventListener('click', () => {
+      STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', STATE.theme);
+      localStorage.setItem('theme', STATE.theme);
+      themeBtn.querySelector('.theme-icon').textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
+      updateReadiness();
+    });
+  }
+}
+
+function initColorPalette() {
+  document.documentElement.setAttribute('data-color', STATE.themeColor);
+  updatePaletteUI(STATE.themeColor);
+
+  const pickerBtn = document.getElementById('palettePickerBtn');
+  const dropdown = document.getElementById('paletteDropdown');
+
+  if (pickerBtn && dropdown) {
+    pickerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isExpanded = pickerBtn.getAttribute('aria-expanded') === 'true';
+      pickerBtn.setAttribute('aria-expanded', !isExpanded);
+      dropdown.classList.toggle('show');
+    });
+
+    dropdown.querySelectorAll('.palette-option-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const palette = btn.getAttribute('data-palette');
+        setThemeColor(palette);
+        dropdown.classList.remove('show');
+        pickerBtn.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target) && !pickerBtn.contains(e.target)) {
+        dropdown.classList.remove('show');
+        pickerBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+}
+
+function setThemeColor(colorName) {
+  if (!COLOR_PALETTES[colorName]) colorName = 'blue';
+  STATE.themeColor = colorName;
+  document.documentElement.setAttribute('data-color', colorName);
+  localStorage.setItem('theme_color', colorName);
+  updatePaletteUI(colorName);
+  updateReadiness();
+}
+
+function updatePaletteUI(colorName) {
+  const currentDot = document.getElementById('currentColorDot');
+  if (currentDot && COLOR_PALETTES[colorName]) {
+    currentDot.style.backgroundColor = COLOR_PALETTES[colorName].color;
+  }
+  document.querySelectorAll('.palette-option-btn').forEach(btn => {
+    const isActive = btn.getAttribute('data-palette') === colorName;
+    btn.classList.toggle('active', isActive);
+  });
+}
+
+// 2. Expandable / Collapsible Sidebar Management
+function initSidebar() {
+  const sidebar = document.getElementById('appSidebar');
+  const collapseBtn = document.getElementById('sidebarCollapseBtn');
+  const menuBtn = document.getElementById('topbarMenuBtn');
+
+  if (sidebar && STATE.sidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+  }
+
+  function toggleSidebar() {
+    STATE.sidebarCollapsed = !STATE.sidebarCollapsed;
+    if (sidebar) {
+      sidebar.classList.toggle('collapsed', STATE.sidebarCollapsed);
+    }
+    localStorage.setItem('sidebar_collapsed', STATE.sidebarCollapsed);
+  }
+
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSidebar();
+    });
+  }
+
+  if (menuBtn) {
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSidebar();
+    });
+  }
+
+  // Keyboard shortcut Alt+B or Ctrl+B
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'b' && (e.altKey || e.metaKey)) {
+      e.preventDefault();
+      toggleSidebar();
+    }
+  });
+}
+
+// 3. Section Maximization (Declutter Focus Mode)
+function toggleMaximize(targetSelectorOrElement, title = 'Focus Workspace') {
+  const target = typeof targetSelectorOrElement === 'string' 
+    ? document.querySelector(targetSelectorOrElement) 
+    : targetSelectorOrElement;
+
+  if (!target) return;
+
+  if (target.classList.contains('is-maximized')) {
+    exitMaximize();
+    return;
+  }
+
+  // If another element is currently maximized, exit it first
+  if (STATE.maximizedElement) {
+    exitMaximize();
+  }
+
+  target.classList.add('is-maximized');
+  document.body.classList.add('has-maximized-section');
+  STATE.maximizedElement = target;
+
+  // Insert or refresh toolbar
+  let toolbar = target.querySelector('.maximized-toolbar');
+  if (!toolbar) {
+    toolbar = document.createElement('div');
+    toolbar.className = 'maximized-toolbar';
+    toolbar.innerHTML = `
+      <div class="max-toolbar-info">
+        <span class="max-badge">⛶ Maximized Focus Mode</span>
+        <span class="max-title">${escapeHtml(title)}</span>
+      </div>
+      <div class="max-toolbar-actions">
+        <span class="max-hint"><kbd>Esc</kbd> to restore</span>
+        <button class="btn-restore-max" onclick="exitMaximize()" title="Exit Maximized Focus Mode (Esc)">
+          <span class="restore-icon">🗗</span> Exit Maximized
+        </button>
+      </div>
+    `;
+    target.insertBefore(toolbar, target.firstChild);
+  } else {
+    const titleEl = toolbar.querySelector('.max-title');
+    if (titleEl) titleEl.textContent = title;
+    toolbar.style.display = 'flex';
+  }
+
+  target.scrollTop = 0;
+}
+
+function exitMaximize() {
+  if (STATE.maximizedElement) {
+    STATE.maximizedElement.classList.remove('is-maximized');
+    const toolbar = STATE.maximizedElement.querySelector('.maximized-toolbar');
+    if (toolbar) {
+      toolbar.remove();
+    }
+    STATE.maximizedElement = null;
+  }
+  document.body.classList.remove('has-maximized-section');
+}
+
+function initMaximizeKeyboard() {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && STATE.maximizedElement) {
+      exitMaximize();
+    }
   });
 }
 
@@ -290,7 +479,13 @@ function renderActiveChallenge() {
           <span style="color: var(--accent-primary);"><strong>${ch.difficulty}</strong></span>
         </div>
       </div>
-      <div style="display: flex; gap: 8px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn-sm btn-secondary" onclick="toggleMaximize('#challengeMain', '${ch.title.replace(/'/g, "\\'")}')" title="Maximize Workspace to Declutter">
+          <span class="max-icon">⛶</span> Focus Workspace
+        </button>
+        <button class="btn-sm btn-secondary" onclick="switchCodeTab('ai')" title="Ask Gemini about this challenge">
+          🤖 Ask Gemini
+        </button>
         <button class="btn-sm ${isSolved ? 'btn-secondary' : 'btn-primary'}" onclick="toggleChallengeSolved('${ch.id}')">
           ${isSolved ? 'Mark Incomplete' : '✓ Mark Solved'}
         </button>
@@ -304,6 +499,7 @@ function renderActiveChallenge() {
     <div class="code-tabs">
       <button class="code-tab-btn ${STATE.codeTab === 'solution' ? 'active' : ''}" onclick="switchCodeTab('solution')">Production Solution (Kotlin)</button>
       <button class="code-tab-btn ${STATE.codeTab === 'explanation' ? 'active' : ''}" onclick="switchCodeTab('explanation')">Architectural Deep-Dive</button>
+      <button class="code-tab-btn ${STATE.codeTab === 'ai' ? 'active' : ''}" onclick="switchCodeTab('ai')">🤖 Ask Gemini (AI Assistant)</button>
     </div>
 
     ${STATE.codeTab === 'solution' ? `
@@ -320,7 +516,7 @@ function renderActiveChallenge() {
         </div>
         <div class="code-display" id="codeDisplayArea">${escapeHtml(ch.solutionCode)}</div>
       </div>
-    ` : `
+    ` : STATE.codeTab === 'explanation' ? `
       <div class="deep-dive-card-container" style="margin-bottom: 20px;">
         <div class="code-editor-header" style="margin-bottom: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg-card);">
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -334,21 +530,29 @@ function renderActiveChallenge() {
         </div>
         ${renderDeepDiveContent(ch)}
       </div>
+    ` : `
+      ${renderAiAssistant(ch)}
     `}
 
     <div class="code-actions">
       <button class="btn-sm btn-primary" onclick="copyEntireProductionCode('${ch.id}', this)" title="Copy entire production Kotlin source code">
         📋 Copy Entire Source Code
       </button>
-      ${STATE.codeTab === 'solution' ? `
-        <button class="btn-sm btn-secondary" onclick="switchCodeTab('explanation')" title="Examine critical architectural patterns, gotchas, and interview trade-offs">
-          💡 View Architectural Deep-Dive
-        </button>
-      ` : `
+      ${STATE.codeTab !== 'solution' ? `
         <button class="btn-sm btn-secondary" onclick="switchCodeTab('solution')" title="Return to production Kotlin solution">
           💻 View Production Solution Code
         </button>
-      `}
+      ` : ''}
+      ${STATE.codeTab !== 'explanation' ? `
+        <button class="btn-sm btn-secondary" onclick="switchCodeTab('explanation')" title="Examine critical architectural patterns, gotchas, and interview trade-offs">
+          💡 View Architectural Deep-Dive
+        </button>
+      ` : ''}
+      ${STATE.codeTab !== 'ai' ? `
+        <button class="btn-sm btn-secondary" onclick="switchCodeTab('ai')" title="Ask Gemini about this challenge">
+          🤖 Ask Gemini
+        </button>
+      ` : ''}
     </div>
   `;
 }
@@ -422,6 +626,11 @@ function renderSystemDesign() {
             <span>•</span>
             <span style="color: var(--accent-primary);"><strong>${activeD.difficulty}</strong></span>
           </div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn-sm btn-secondary" onclick="toggleMaximize('.hld-card', '${activeD.title.replace(/'/g, "\\'")}')" title="Maximize Architecture Blueprint">
+            <span class="max-icon">⛶</span> Maximize Blueprint
+          </button>
         </div>
       </div>
 
@@ -643,4 +852,342 @@ function showToast(message) {
 
 function escapeHtml(string) {
   return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+
+// ==========================================================================
+// 🤖 Gemini BYOK & Coding Arena Assistant Controllers
+// ==========================================================================
+
+const AI_CODING_PRESETS = {
+  concurrency: "Analyze the Kotlin Coroutines and thread safety in this solution. What are the specific cancellation hazards, Dispatcher gotchas, or race conditions that a Staff Android interviewer would challenge?",
+  memory: "Evaluate the memory lifecycle and object allocation traps in this code. Where could memory leaks, uncollected listeners, or GC pressure occur under high stress or Activity recreation?",
+  grilling: "Act as an aggressive Staff Mobile Bar-Raiser at the target company. Ask me 3 difficult follow-up questions challenging the architectural trade-offs, edge-case failure modes, and scalability of this implementation.",
+  testing: "Provide a comprehensive unit test suite in Kotlin using Turbine and Coroutines TestDispatcher (StandardTestDispatcher) testing the critical edge cases, timeout cancellation, and exception propagation for this implementation.",
+  performance: "Break down the performance, memory footprint (e.g. boxing overhead, collection allocation), and ART runtime characteristics of this code. How does it behave under low-memory (onTrimMemory) pressure?"
+};
+
+function renderAiAssistant(ch) {
+  const hasKey = typeof GeminiService !== 'undefined' && GeminiService.hasKey();
+  const maskedKey = hasKey ? GeminiService.getMaskedKey() : '';
+  const currentModel = typeof GeminiService !== 'undefined' ? GeminiService.getModel() : 'gemini-2.5-flash';
+  const existingResponse = STATE.aiState.response[ch.id] || null;
+  const isLoading = STATE.aiState.loading && STATE.aiState.activeChallengeId === ch.id;
+
+  return `
+    <div class="ai-assistant-container">
+      <div class="ai-assistant-header">
+        <div class="ai-header-info">
+          <span style="font-size: 24px;">🤖</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              Gemini Staff Interviewer & Code Evaluator
+              <span class="ai-header-badge">Model: ${escapeHtml(currentModel)}</span>
+            </h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">
+              Ask technical questions, explore concurrency hazards, or get grilled on <strong>${escapeHtml(ch.title)}</strong> (${escapeHtml(ch.company)})
+            </p>
+          </div>
+        </div>
+        <div>
+          <button class="btn-sm btn-secondary" onclick="openGeminiModal()" title="Change Gemini API Key or Model" style="font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+            <span>🔑</span>
+            <span>${hasKey ? maskedKey : 'Configure API Key'}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="ai-prompt-chips-wrapper">
+        <div class="ai-prompt-chips-label">⚡ 1-Click Staff Interview Topics</div>
+        <div class="ai-prompt-chips">
+          <button class="ai-prompt-chip" onclick="askGeminiCodingPreset('concurrency')">
+            <span>⚡</span> Coroutine & Concurrency Hazards
+          </button>
+          <button class="ai-prompt-chip" onclick="askGeminiCodingPreset('memory')">
+            <span>⚠️</span> Memory Leaks & Lifecycle Pitfalls
+          </button>
+          <button class="ai-prompt-chip" onclick="askGeminiCodingPreset('grilling')">
+            <span>🎯</span> 3 Staff Mock Follow-up Questions
+          </button>
+          <button class="ai-prompt-chip" onclick="askGeminiCodingPreset('testing')">
+            <span>🧪</span> Unit Testing with Turbine & TestDispatcher
+          </button>
+          <button class="ai-prompt-chip" onclick="askGeminiCodingPreset('performance')">
+            <span>⏱️</span> Allocation & ART Execution Overhead
+          </button>
+        </div>
+      </div>
+
+      <div class="ai-query-box">
+        <label for="aiCustomPromptInput" style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px;">
+          Ask any specific question about this solution:
+        </label>
+        <textarea id="aiCustomPromptInput" placeholder="e.g. Why did we use Mutex instead of synchronized block? What happens if the coroutine gets cancelled midway? How would you defend this at ${escapeHtml(ch.company)}?" rows="3">${escapeHtml(STATE.aiState.lastQuestion[ch.id] || '')}</textarea>
+        
+        <div class="ai-query-actions">
+          <span style="font-size: 12px; color: var(--text-muted);">
+            ${hasKey ? 'Key saved in browser • 100% Client-Side Direct API' : '⚠️ No API key set. Free key required.'}
+          </span>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-sm btn-secondary" onclick="clearAiResponse('${ch.id}')" title="Clear current AI response">
+              Clear
+            </button>
+            <button class="btn-sm btn-primary" id="btnSubmitAiQuestion" onclick="submitGeminiCodingQuestion('${ch.id}')" ${isLoading ? 'disabled' : ''}>
+              ${isLoading ? '<span class="pulse-spinner"></span> Thinking...' : '✨ Ask Gemini'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-response-area" id="aiResponseContainer">
+        ${isLoading ? `
+          <div class="shimmer-loading">
+            <span class="pulse-spinner"></span>
+            <span>Analyzing ${escapeHtml(ch.title)} with ${escapeHtml(currentModel)}...</span>
+          </div>
+        ` : existingResponse ? `
+          <div class="ai-response-header">
+            <span style="font-size: 13px; font-weight: 700; color: var(--accent-primary);">
+              💡 Staff Interviewer Response
+            </span>
+            <button class="btn-sm btn-secondary" onclick="copyAiResponse('${ch.id}', this)" style="font-size: 11.5px; padding: 4px 10px;">
+              📋 Copy Response
+            </button>
+          </div>
+          <div class="ai-response-body">
+            ${GeminiService.renderMarkdown(existingResponse)}
+          </div>
+        ` : !hasKey ? `
+          <div class="ai-empty-state">
+            <span class="ai-empty-icon">🔑</span>
+            <h4 style="font-size: 15px; margin-bottom: 6px;">Gemini API Key Required (BYOK)</h4>
+            <p style="font-size: 13px; max-width: 480px; margin: 0 auto 16px auto; line-height: 1.6;">
+              To ask questions and analyze this Kotlin solution, add your free Gemini API key from Google AI Studio. Stored strictly in your browser.
+            </p>
+            <button class="btn-sm btn-primary" onclick="openGeminiModal()">
+              ⚙️ Configure Free Gemini Key
+            </button>
+          </div>
+        ` : `
+          <div class="ai-empty-state">
+            <span class="ai-empty-icon">💬</span>
+            <h4 style="font-size: 15px; margin-bottom: 6px;">Ready for Questions</h4>
+            <p style="font-size: 13px; max-width: 460px; margin: 0 auto; line-height: 1.6;">
+              Click any of the 1-click staff interview topics above, or type your own question about <strong>${escapeHtml(ch.title)}</strong> to receive instant architectural analysis.
+            </p>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+async function askGeminiCodingPreset(presetKey) {
+  const prompt = AI_CODING_PRESETS[presetKey];
+  if (!prompt) return;
+  const inputEl = document.getElementById('aiCustomPromptInput');
+  if (inputEl) inputEl.value = prompt;
+  await submitGeminiCodingQuestion(STATE.activeChallengeId, prompt);
+}
+
+async function submitGeminiCodingQuestion(challengeId, directPrompt) {
+  const ch = getAllChallenges().find(c => c.id === challengeId);
+  if (!ch) return;
+
+  if (!GeminiService.hasKey()) {
+    openGeminiModal();
+    showToast('Please configure your Gemini API Key first.');
+    return;
+  }
+
+  const promptInput = document.getElementById('aiCustomPromptInput');
+  const question = directPrompt || (promptInput ? promptInput.value.trim() : '');
+  if (!question) {
+    showToast('Please type a question or select a topic chip.');
+    return;
+  }
+
+  STATE.aiState.loading = true;
+  STATE.aiState.activeChallengeId = challengeId;
+  STATE.aiState.lastQuestion[challengeId] = question;
+  renderActiveChallenge();
+
+  try {
+    const answer = await GeminiService.askCodingQuestion(ch, question);
+    STATE.aiState.response[challengeId] = answer;
+    STATE.aiState.loading = false;
+    renderActiveChallenge();
+    showToast('Gemini response received!');
+  } catch (err) {
+    STATE.aiState.loading = false;
+    renderActiveChallenge();
+    if (err.message && (err.message.includes('API_KEY_INVALID') || err.message.includes('API key not valid'))) {
+      showToast('Invalid API Key. Please update in AI Settings.');
+      openGeminiModal();
+    } else {
+      showToast(`AI Error: ${err.message}`);
+    }
+  }
+}
+
+function clearAiResponse(challengeId) {
+  if (STATE.aiState.response[challengeId]) {
+    delete STATE.aiState.response[challengeId];
+  }
+  if (STATE.aiState.lastQuestion[challengeId]) {
+    delete STATE.aiState.lastQuestion[challengeId];
+  }
+  renderActiveChallenge();
+  showToast('AI response cleared.');
+}
+
+function copyAiResponse(challengeId, btn) {
+  const text = STATE.aiState.response[challengeId];
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copied!';
+      setTimeout(() => { btn.innerHTML = orig; }, 1800);
+    }
+    showToast('AI response copied to clipboard!');
+  });
+}
+
+function initGeminiUI() {
+  updateGeminiKeyIndicator();
+
+  // Top action bar button
+  const geminiBtn = document.getElementById('geminiKeyBtn');
+  if (geminiBtn) {
+    geminiBtn.addEventListener('click', openGeminiModal);
+  }
+
+  // Close modal button
+  const closeBtn = document.getElementById('closeGeminiModalBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeGeminiModal);
+  }
+
+  // Toggle eye visibility
+  const eyeBtn = document.getElementById('toggleApiKeyVisibility');
+  const keyInput = document.getElementById('geminiApiKeyInput');
+  if (eyeBtn && keyInput) {
+    eyeBtn.addEventListener('click', () => {
+      const isPassword = keyInput.type === 'password';
+      keyInput.type = isPassword ? 'text' : 'password';
+      eyeBtn.textContent = isPassword ? '🔒' : '👁️';
+    });
+  }
+
+  // Save button
+  const saveBtn = document.getElementById('saveGeminiKeyBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const keyVal = document.getElementById('geminiApiKeyInput').value.trim();
+      const modelVal = document.getElementById('geminiModelSelect').value;
+      
+      GeminiService.setKey(keyVal);
+      GeminiService.setModel(modelVal);
+      updateGeminiKeyIndicator();
+      closeGeminiModal();
+      showToast(keyVal ? 'Gemini API Key saved locally!' : 'Gemini Key cleared');
+      
+      if (STATE.currentTab === 'coding') {
+        renderActiveChallenge();
+      }
+    });
+  }
+
+  // Clear button
+  const clearBtn = document.getElementById('clearGeminiKeyBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      GeminiService.setKey('');
+      document.getElementById('geminiApiKeyInput').value = '';
+      updateGeminiKeyIndicator();
+      const resEl = document.getElementById('geminiTestResult');
+      if (resEl) resEl.style.display = 'none';
+      showToast('Gemini API Key removed.');
+      if (STATE.currentTab === 'coding') {
+        renderActiveChallenge();
+      }
+    });
+  }
+
+  // Test button
+  const testBtn = document.getElementById('testGeminiKeyBtn');
+  if (testBtn) {
+    testBtn.addEventListener('click', async () => {
+      const keyVal = document.getElementById('geminiApiKeyInput').value.trim();
+      const modelVal = document.getElementById('geminiModelSelect').value;
+      const resEl = document.getElementById('geminiTestResult');
+      if (!resEl) return;
+
+      resEl.style.display = 'block';
+      resEl.className = 'ai-test-result';
+      resEl.innerHTML = '<span class="pulse-spinner"></span> Connecting to Google Gemini API...';
+
+      try {
+        await GeminiService.testConnection(keyVal, modelVal);
+        resEl.className = 'ai-test-result success';
+        resEl.innerHTML = '✓ Connection successful! Your Gemini API key is valid and ready to use.';
+      } catch (err) {
+        resEl.className = 'ai-test-result error';
+        resEl.innerHTML = `✗ Connection failed: ${escapeHtml(err.message)}`;
+      }
+    });
+  }
+}
+
+function updateGeminiKeyIndicator() {
+  const dot = document.getElementById('geminiStatusDot');
+  const hint = document.getElementById('apiKeyStatusHint');
+  const input = document.getElementById('geminiApiKeyInput');
+  const modelSelect = document.getElementById('geminiModelSelect');
+
+  if (typeof GeminiService === 'undefined') return;
+
+  const hasKey = GeminiService.hasKey();
+  if (dot) {
+    dot.className = `ai-status-indicator ${hasKey ? 'active' : 'inactive'}`;
+    dot.title = hasKey ? `Gemini Active (${GeminiService.getModel()})` : 'Gemini Key not configured';
+  }
+
+  if (input && hasKey && !input.value) {
+    input.value = GeminiService.getKey();
+  }
+
+  if (modelSelect) {
+    modelSelect.value = GeminiService.getModel();
+  }
+
+  if (hint) {
+    hint.textContent = hasKey 
+      ? `Configured: ${GeminiService.getMaskedKey()} (${GeminiService.getModel()})`
+      : 'No key configured. Key will be saved only in your browser localStorage.';
+  }
+}
+
+function openGeminiModal() {
+  const modal = document.getElementById('geminiModal');
+  if (!modal) return;
+  updateGeminiKeyIndicator();
+  const resEl = document.getElementById('geminiTestResult');
+  if (resEl) resEl.style.display = 'none';
+  if (typeof modal.showModal === 'function') {
+    modal.showModal();
+  } else {
+    modal.setAttribute('open', '');
+  }
+}
+
+function closeGeminiModal() {
+  const modal = document.getElementById('geminiModal');
+  if (!modal) return;
+  if (typeof modal.close === 'function') {
+    modal.close();
+  } else {
+    modal.removeAttribute('open');
+  }
 }
