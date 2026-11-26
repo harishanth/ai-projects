@@ -7,13 +7,13 @@
 const GeminiService = {
   STORAGE_KEY: 'android_prep_gemini_key',
   STORAGE_MODEL: 'android_prep_gemini_model',
-  DEFAULT_MODEL: 'gemini-2.5-flash',
+  DEFAULT_MODEL: 'gemini-2.5-flash-lite',
 
   AVAILABLE_MODELS: [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Recommended - Fastest & Smartest)' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (High Quota)' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Deep Reasoning)' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite (Recommended - Fast & Stable)' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview (Next-Gen)' },
+    { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (High Capability)' },
+    { id: 'gemini-flash-latest', name: 'Gemini Flash Latest' }
   ],
 
   getKey() {
@@ -41,12 +41,80 @@ const GeminiService = {
   },
 
   getModel() {
-    return localStorage.getItem(this.STORAGE_MODEL) || this.DEFAULT_MODEL;
+    const saved = localStorage.getItem(this.STORAGE_MODEL);
+    // Auto-migrate legacy/deprecated models
+    if (!saved || saved === 'gemini-2.5-flash' || saved === 'gemini-1.5-flash' || saved === 'gemini-2.0-flash' || saved === 'gemini-1.5-pro') {
+      return this.DEFAULT_MODEL;
+    }
+    return saved;
   },
 
   setModel(model) {
     if (model) {
       localStorage.setItem(this.STORAGE_MODEL, model.trim());
+    }
+  },
+
+  /**
+   * Dispatches Gemini API requests with header-based authentication,
+   * with automatic fallback to local python proxy (if running locally)
+   * or query-parameter fallback to avoid SSL inspection/handshake issues.
+   */
+  async callGeminiAPI(targetModel, requestBody, explicitKey) {
+    const key = explicitKey || this.getKey();
+    if (!key) {
+      throw new Error('Please enter a Gemini API Key.');
+    }
+
+    const directUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent`;
+
+    // 1. Try standard direct call with header authentication (keeps key out of query string to avoid proxy SSL drops)
+    try {
+      const response = await fetch(directUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key
+        },
+        body: JSON.stringify(requestBody)
+      });
+      return response;
+    } catch (networkError) {
+      console.warn('Direct Gemini call failed (network or SSL error), trying local proxy / query-param fallback...', networkError);
+
+      // 2. If running locally on localhost, try the server.py proxy to bypass browser-level SSL/antivirus protocol drops
+      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocalHost) {
+        try {
+          const proxyResp = await fetch('/api/gemini/generateContent', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': key,
+              'x-goog-model': targetModel
+            },
+            body: JSON.stringify(requestBody)
+          });
+          return proxyResp;
+        } catch (proxyError) {
+          console.warn('Local proxy also failed, trying query-param fallback...', proxyError);
+        }
+      }
+
+      // 3. Query param fallback
+      try {
+        const queryUrl = `${directUrl}?key=${encodeURIComponent(key)}`;
+        const fallbackResp = await fetch(queryUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+        return fallbackResp;
+      } catch (finalError) {
+        throw new Error(
+          'Network / SSL Error connecting to Google Gemini API (ERR_SSL_PROTOCOL_ERROR). This usually occurs if a corporate firewall, proxy, antivirus SSL inspection, or browser ad-blocker terminates direct API calls. If running locally, please start "./run.sh --server" (or "python3 server.py") which provides an automatic native proxy.'
+        );
+      }
     }
   },
 
@@ -56,21 +124,18 @@ const GeminiService = {
       throw new Error('Please enter a Gemini API Key.');
     }
     const targetModel = model || this.getModel();
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${encodeURIComponent(key)}`;
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: 'Respond with exactly the single word "READY".' }]
-        }],
-        generationConfig: {
-          maxOutputTokens: 10,
-          temperature: 0.1
-        }
-      })
-    });
+    const requestBody = {
+      contents: [{
+        parts: [{ text: 'Respond with exactly the single word "READY".' }]
+      }],
+      generationConfig: {
+        maxOutputTokens: 10,
+        temperature: 0.1
+      }
+    };
+
+    const response = await this.callGeminiAPI(targetModel, requestBody, key);
 
     if (!response.ok) {
       let errMessage = `HTTP ${response.status}: ${response.statusText}`;
@@ -99,7 +164,6 @@ const GeminiService = {
     }
 
     const model = this.getModel();
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
 
     const systemInstruction = `You are a Staff Android Engineer and Lead Mobile Interviewer at top-tier tech companies (specializing in 10-11 years experience bar-raising).
 You are evaluating and mentoring a candidate on the following coding problem:
@@ -138,11 +202,7 @@ INSTRUCTIONS:
       }
     };
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+    const response = await this.callGeminiAPI(model, requestBody, key);
 
     if (!response.ok) {
       let errMessage = `Google Gemini Error (${response.status})`;

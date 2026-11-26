@@ -908,7 +908,7 @@ const AI_CODING_PRESETS = {
 function renderAiAssistant(ch) {
   const hasKey = typeof GeminiService !== 'undefined' && GeminiService.hasKey();
   const maskedKey = hasKey ? GeminiService.getMaskedKey() : '';
-  const currentModel = typeof GeminiService !== 'undefined' ? GeminiService.getModel() : 'gemini-2.5-flash';
+  const currentModel = typeof GeminiService !== 'undefined' ? GeminiService.getModel() : 'gemini-2.5-flash-lite';
   const existingResponse = STATE.aiState.response[ch.id] || null;
   const isLoading = STATE.aiState.loading && STATE.aiState.activeChallengeId === ch.id;
 
