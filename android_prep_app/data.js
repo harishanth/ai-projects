@@ -278,7 +278,6 @@ const APP_DATA = {
     }
   ],
 
-  codingChallenges:
   codingChallenges: [
     {
       id: "challenge-1",
