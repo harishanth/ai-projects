@@ -65,7 +65,13 @@ if (document.readyState === 'loading') {
 }
 
 // 1. Theme & Color Management
-function toggleTheme() {
+let _lastThemeToggle = 0;
+function toggleTheme(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const now = Date.now();
+  if (now - _lastThemeToggle < 200) return;
+  _lastThemeToggle = now;
+
   STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', STATE.theme);
   localStorage.setItem('theme', STATE.theme);
@@ -83,17 +89,21 @@ function initTheme() {
   if (themeBtn) {
     const icon = themeBtn.querySelector('.theme-icon');
     if (icon) icon.textContent = STATE.theme === 'dark' ? '☀️' : '🌙';
-    themeBtn.addEventListener('click', toggleTheme);
   }
 }
 
+let _lastPaletteToggle = 0;
 function togglePaletteDropdown(e) {
   if (e && e.stopPropagation) e.stopPropagation();
+  const now = Date.now();
+  if (now - _lastPaletteToggle < 200) return;
+  _lastPaletteToggle = now;
+
   const pickerBtn = document.getElementById('palettePickerBtn');
   const dropdown = document.getElementById('paletteDropdown');
   if (pickerBtn && dropdown) {
     const isExpanded = pickerBtn.getAttribute('aria-expanded') === 'true';
-    pickerBtn.setAttribute('aria-expanded', !isExpanded);
+    pickerBtn.setAttribute('aria-expanded', String(!isExpanded));
     dropdown.classList.toggle('show');
   }
 }
@@ -106,8 +116,6 @@ function initColorPalette() {
   const dropdown = document.getElementById('paletteDropdown');
 
   if (pickerBtn && dropdown) {
-    pickerBtn.addEventListener('click', togglePaletteDropdown);
-
     dropdown.querySelectorAll('.palette-option-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -147,7 +155,13 @@ function updatePaletteUI(colorName) {
   });
 }
 
-function toggleSidebar() {
+let _lastSidebarToggle = 0;
+function toggleSidebar(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const now = Date.now();
+  if (now - _lastSidebarToggle < 200) return;
+  _lastSidebarToggle = now;
+
   const sidebar = document.getElementById('appSidebar');
   STATE.sidebarCollapsed = !STATE.sidebarCollapsed;
   if (sidebar) {
@@ -159,25 +173,9 @@ function toggleSidebar() {
 // 2. Expandable / Collapsible Sidebar Management
 function initSidebar() {
   const sidebar = document.getElementById('appSidebar');
-  const collapseBtn = document.getElementById('sidebarCollapseBtn');
-  const menuBtn = document.getElementById('topbarMenuBtn');
 
   if (sidebar && STATE.sidebarCollapsed) {
     sidebar.classList.add('collapsed');
-  }
-
-  if (collapseBtn) {
-    collapseBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleSidebar();
-    });
-  }
-
-  if (menuBtn) {
-    menuBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleSidebar();
-    });
   }
 
   // Keyboard shortcut Alt+B or Ctrl+B
