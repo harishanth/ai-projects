@@ -3305,7 +3305,7 @@ class HighThroughputEventBatcher(
     },
     {
       id: "q41",
-      question: "What is the primary vulnerability prevented by setting 'android:exported="false"' on Activities, Services, and BroadcastReceivers in the AndroidManifest?",
+      question: "What is the primary vulnerability prevented by setting 'android:exported=\\'false\\'' on Activities, Services, and BroadcastReceivers in the AndroidManifest?",
       options: [
         "It prevents the app from being uninstalled by the user.",
         "It prevents unauthorized external third-party applications on the device from directly launching, binding to, or sending spoofed intent broadcasts to private internal app components.",
