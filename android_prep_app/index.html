@@ -190,7 +190,9 @@
               <div class="hero-tags">
                 <span class="tag">📍 Chennai & Remote</span>
                 <span class="tag" id="heroJobsCount">💼 14 Jobs Tracked</span>
-                <span class="tag">🎯 10 Production Challenges</span>
+                <span class="tag" id="heroChallengesCount">🎯 15 Production Challenges</span>
+                <span class="tag" id="heroHldCount">🏛️ 8 System Blueprints</span>
+                <span class="tag" id="heroQuizCount">🧠 16 Internals Quizzes</span>
               </div>
             </div>
             <div class="readiness-card">
@@ -496,6 +498,77 @@
                 <li><strong>Certificate Pinning:</strong> Configure pin sets in <code>res/xml/network_security_config.xml</code> with backup pins to avoid app breakage on cert expiry.</li>
                 <li><strong>Database Encryption:</strong> Use SQLCipher with Room DB, deriving the database encryption passphrase dynamically using Keystore.</li>
                 <li><strong>Root & Anti-Tamper:</strong> Check for test-keys build tags, su binaries, and implement Play Integrity API for server-side attestation.</li>
+              </ul>
+            </div>
+            <div class="cheat-card" id="cheatHld">
+              <div class="cheat-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">🏛️</span>
+                  <h3>Mobile System Design & Scale Checklist</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatHld', 'Mobile System Design & Scale Checklist')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>Requirements & Scale:</strong> Always establish DAU, peak QPS, network latency envelopes, offline mutations, and battery budget upfront.</li>
+                <li><strong>Client Single Source of Truth:</strong> Presentation UI (Compose) solely observes Room SQLite Flow. Mutating actions append to SQLite first, then sync over WebSocket/HTTP.</li>
+                <li><strong>Conflict Resolution:</strong> Last-Write-Wins (LWW) with client-server timestamping, CRDTs for collaborative docs, or server-authoritative reconciliation with delta rollbacks.</li>
+                <li><strong>Graceful Degradation:</strong> Implement circuit breakers on HTTP 5xx, exponential jitter backoff, and WorkManager expedited tasks for persistent background sync.</li>
+              </ul>
+            </div>
+
+            <div class="cheat-card" id="cheatFlow">
+              <div class="cheat-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">🌊</span>
+                  <h3>Kotlin Flow Operators & Concurrency Matrix</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatFlow', 'Kotlin Flow Operators Matrix')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>flatMapLatest vs flatMapMerge:</strong> <code>flatMapLatest</code> cancels previous upstream coroutines when new inputs emit (ideal for search autocomplete); <code>flatMapMerge</code> executes concurrently.</li>
+                <li><strong>buffer vs conflate:</strong> <code>buffer()</code> adds an async channel buffer between producer and consumer; <code>conflate()</code> drops intermediate values if collector is slow.</li>
+                <li><strong>debounce vs sample:</strong> <code>debounce(timeout)</code> emits only after a period of upstream inactivity; <code>sample(period)</code> emits latest value at regular periodic intervals.</li>
+                <li><strong>combine vs zip:</strong> <code>combine</code> emits whenever <em>either</em> flow updates using the latest from both; <code>zip</code> pairs emissions strictly 1-to-1 in lockstep.</li>
+              </ul>
+            </div>
+
+            <div class="cheat-card" id="cheatMemory">
+              <div class="cheat-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">🧠</span>
+                  <h3>Memory Leaks, 16KB Pages & ART Internals</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatMemory', 'Memory Leaks & ART Internals')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>1MB Binder IPC Limit:</strong> Total pending IPC transactions across process cannot exceed ~1MB. Storing large lists or bitmaps in Intent/SavedStateHandle triggers <code>TransactionTooLargeException</code>.</li>
+                <li><strong>16 KB Page Alignment:</strong> Android 15 requires native C++ <code>.so</code> shared libraries to align ELF load segments to 16KB to prevent crashes on high-efficiency kernels.</li>
+                <li><strong>Bitmap Recycling & inBitmap:</strong> Use <code>BitmapFactory.Options.inBitmap</code> with an LRU BitmapPool to reuse existing memory buffers and avoid JVM GC pauses.</li>
+                <li><strong>Low Memory Killer (LMK):</strong> Android kills cached background processes based on <code>oom_adj_score</code>. Free in-memory caches inside <code>ComponentCallbacks2.onTrimMemory()</code>.</li>
+              </ul>
+            </div>
+
+            <div class="cheat-card" id="cheatModular">
+              <div class="cheat-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="cheat-icon">📦</span>
+                  <h3>Multi-Module Architecture & Dynamic Delivery</h3>
+                </div>
+                <button class="section-maximize-btn" onclick="toggleMaximize('#cheatModular', 'Multi-Module Architecture')" title="Maximize Card to Declutter">
+                  <span class="max-icon">⛶</span>
+                </button>
+              </div>
+              <ul class="cheat-list">
+                <li><strong>Decoupled Module Contracts:</strong> Split features into <code>:feature:name-api</code> (interfaces/contracts) and <code>:feature:name-impl</code> (implementation) to prevent circular dependency cycles.</li>
+                <li><strong>Play Feature Delivery (DFM):</strong> Package heavy, rarely-used modules (e.g. KYC scanner, video editor) as on-demand feature modules to reduce base APK download size.</li>
+                <li><strong>Dagger/Hilt Subgraphs:</strong> Root application component holds shared singletons (Network, DB); feature modules maintain isolated component lifetimes disposed on exit.</li>
+                <li><strong>Contract-Based Navigation:</strong> Navigate between modules using URI deep links or reflection-free service locator registries without compile-time module dependencies.</li>
               </ul>
             </div>
           </div>

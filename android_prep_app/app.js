@@ -415,6 +415,12 @@ function updateReadiness() {
   if (navLabel) navLabel.textContent = `Company Intel (${APP_DATA.companies.length})`;
   const heroJobs = document.getElementById('heroJobsCount');
   if (heroJobs) heroJobs.textContent = `💼 ${APP_DATA.companies.length} Jobs Tracked`;
+  const heroChallenges = document.getElementById('heroChallengesCount');
+  if (heroChallenges) heroChallenges.textContent = `🎯 ${totalChallenges} Production Challenges`;
+  const heroHld = document.getElementById('heroHldCount');
+  if (heroHld) heroHld.textContent = `🏛️ ${totalHld} System Blueprints`;
+  const heroQuiz = document.getElementById('heroQuizCount');
+  if (heroQuiz) heroQuiz.textContent = `🧠 ${totalQuiz} Internals Quizzes`;
 
   // Update circular ring gradient
   const ring = document.getElementById('dashboardProgressRing');

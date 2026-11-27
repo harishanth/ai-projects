@@ -1286,6 +1286,643 @@ class BitmapMemoryCache(
 ### ⚖️ Architectural Trade-Offs & Edge Case Resilience
 - **L1 (Memory) vs L2 (Disk) Caching:** Memory cache (fastest, volatile) backed by DiskLruCache (persistent, handles cold starts) provides 60FPS scrolling with offline image viewing.`
     }
+    ,
+    {
+      id: "challenge-11",
+      title: "WorkManager Expedited Sync Engine with Exponential Backoff",
+      company: "Swits Digital & Enterprise Track",
+      difficulty: "Hard (Lead Level)",
+      category: "Background Processing & Concurrency",
+      summary: "Implement an enterprise WorkManager CoroutineWorker with expedited execution, Network Constraints, and exponential retry backoff.",
+      problemDesc: `In mission-critical enterprise applications, offline mutations (e.g. order approvals, inventory counts) must sync immediately when connectivity returns, even if the user backgrounded the app or the device entered Doze mode.
+
+Construct a resilient \`ExpeditedSyncWorker\`:
+1. Extend \`CoroutineWorker\` and implement \`getForegroundInfo()\` required for expedited jobs on Android 11 and lower.
+2. Configure dynamic constraints requiring an unmetered, connected network (\`NetworkType.UNMETERED\`) and battery not low.
+3. Catch transient HTTP 5xx network exceptions and trigger exponential backoff retry via \`Result.retry()\`.
+4. Ensure critical unrecoverable 4xx authentication errors abort cleanly with \`Result.failure()\`.
+5. Gracefully handle coroutine cancellation when the OS reclaims expedited execution quota.`,
+      solutionCode: `import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import androidx.core.app.NotificationCompat
+import androidx.work.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class ExpeditedSyncWorker(
+    appContext: Context,
+    workerParams: WorkerParameters,
+    private val syncRepository: SyncRepository = SyncRepositoryLocator.get()
+) : CoroutineWorker(appContext, workerParams) {
+
+    companion object {
+        const val WORK_NAME = "expedited_sync_work"
+        private const val CHANNEL_ID = "sync_channel"
+        private const val NOTIFICATION_ID = 404
+
+        fun buildRequest(): OneTimeWorkRequest {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .build()
+
+            return OneTimeWorkRequestBuilder<ExpeditedSyncWorker>()
+                .setConstraints(constraints)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    java.util.concurrent.TimeUnit.MILLISECONDS
+                )
+                .addTag("telemetry_sync")
+                .build()
+        }
+    }
+
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        try {
+            // Check if OS cancelled expedited work before starting
+            if (isStopped) return@withContext Result.retry()
+
+            // Execute delta sync
+            val pendingCount = syncRepository.getPendingMutationCount()
+            if (pendingCount == 0) return@withContext Result.success()
+
+            val success = syncRepository.flushPendingMutations()
+            if (success) {
+                Result.success()
+            } else {
+                // Transient error: schedule exponential retry
+                Result.retry()
+            }
+        } catch (e: CancellationException) {
+            // WorkManager stopped the coroutine (e.g. quota depleted, constraints violated)
+            Result.retry()
+        } catch (e: AuthException) {
+            // Unrecoverable authentication error: do not retry endlessly
+            Result.failure()
+        } catch (e: Exception) {
+            if (runAttemptCount < 3) Result.retry() else Result.failure()
+        }
+    }
+
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val notification = createSyncNotification()
+        return ForegroundInfo(NOTIFICATION_ID, notification)
+    }
+
+    private fun createSyncNotification(): Notification {
+        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Data Sync Service",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        nm.createNotificationChannel(channel)
+
+        return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setContentTitle("Syncing Data")
+            .setContentText("Uploading pending offline mutations...")
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setOngoing(true)
+            .build()
+    }
+}`,
+      explanation: `### 💡 Core Architectural Concepts in Production
+- **Expedited Jobs vs Foreground Services (Android 12+):** Android 12 severely restricts background apps from launching Foreground Services. Expedited WorkRequests run with high priority immediately, bypassing Doze and App Standby, without holding an ongoing notification on Android 12+.
+- **OutOfQuotaPolicy:** Each app is allocated an execution quota for expedited jobs. \`OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST\` ensures the task smoothly falls back to a regular scheduled WorkRequest if the quota is exhausted rather than failing.
+- **getForegroundInfo() Requirement:** Even on Android 12+, WorkManager mandates implementing \`getForegroundInfo()\` so it can fall back to a Foreground Service notification when running on Android 11 or earlier.
+
+### ⚠️ Common Production Gotchas & Anti-Patterns
+- **Catching CancellationException Silently:** If \`try-catch (e: Exception)\` catches \`CancellationException\` without rethrowing or returning \`Result.retry()\`, WorkManager cannot detect that the OS stopped the worker, causing orphaned state.
+- **Heavy Injections in Worker Constructors:** Never inject large Activity or UI Contexts into Workers. Use WorkerFactory or Hilt \`@HiltWorker\` with constructor injection for testability.
+
+### 🎙️ Staff-Level Interview Talking Points
+- **Q: "Why use WorkManager instead of CoroutineScope(Dispatchers.IO).launch in a Service?"** -> Custom coroutines die when the OS kills the app process. WorkManager persists job definitions in an internal SQLite database and resumes execution across device reboots and process death.`,
+      testCases: [
+        { name: "Expedited execution with network", input: "Network connected, battery healthy", expected: "Result.success() returned within quota" },
+        { name: "Transient HTTP 503 error", input: "Server unreachable (503)", expected: "Result.retry() with exponential backoff" },
+        { name: "Quota exhaustion fallback", input: "App exceeded expedited quota", expected: "Executes safely as standard WorkRequest" }
+      ]
+    },
+    {
+      id: "challenge-12",
+      title: "Custom Jetpack Compose Layout (Fluid Staggered Masonry Grid)",
+      company: "Bounteous & Modern Web/Mobile",
+      difficulty: "Hard (Lead Level)",
+      category: "Compose UI & Custom Layouts",
+      summary: "Create a custom high-performance Compose Layout with dynamic multi-column height balancing and intrinsic measurement.",
+      problemDesc: `While Compose provides \`LazyVerticalGrid\`, complex Pinterest-style masonry feeds or dynamic dashboard widgets require a staggered multi-column layout where items of arbitrary heights are continuously placed into the shortest current column to prevent white gaps.
+
+Construct a production-ready custom \`StaggeredMasonryLayout\`:
+1. Use the core \`Layout(content, modifier) { measurables, constraints -> ... }\` composable API.
+2. Divide available max width across \`columns\` (e.g. 2 or 3 columns).
+3. Measure each child measurable with exact column width constraints.
+4. Maintain an array of current column heights and place each child into whichever column is currently lowest.
+5. Compute the total layout width and max column height, calling \`layout(totalWidth, maxHeight)\` with exact coordinates for each placeable.`,
+      solutionCode: `import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import kotlin.math.max
+
+@Composable
+fun StaggeredMasonryLayout(
+    modifier: Modifier = Modifier,
+    columns: Int = 2,
+    horizontalSpacing: Dp = 8.dp,
+    verticalSpacing: Dp = 8.dp,
+    content: @Composable () -> Unit
+) {
+    require(columns > 0) { "Columns must be greater than 0" }
+
+    Layout(
+        content = content,
+        modifier = modifier
+    ) { measurables, constraints ->
+        val hSpacingPx = horizontalSpacing.roundToPx()
+        val vSpacingPx = verticalSpacing.roundToPx()
+
+        // Calculate uniform width for each column
+        val totalSpacing = hSpacingPx * (columns - 1)
+        val columnWidth = ((constraints.maxWidth - totalSpacing) / columns).coerceAtLeast(0)
+        val itemConstraints = constraints.copy(minWidth = columnWidth, maxWidth = columnWidth)
+
+        // Measure all children with fixed column width
+        val placeables = measurables.map { measurable ->
+            measurable.measure(itemConstraints)
+        }
+
+        // Track accumulated height per column
+        val colHeights = IntArray(columns) { 0 }
+        
+        // Store computed (x, y) coordinates for each child
+        class ItemPlacement(val x: Int, val y: Int)
+        val placements = placeables.map { placeable ->
+            // Find the shortest column index
+            var minCol = 0
+            for (col in 1 until columns) {
+                if (colHeights[col] < colHeights[minCol]) {
+                    minCol = col
+                }
+            }
+
+            val x = minCol * (columnWidth + hSpacingPx)
+            val y = colHeights[minCol]
+
+            // Advance the height of this column
+            colHeights[minCol] += placeable.height + vSpacingPx
+
+            ItemPlacement(x, y)
+        }
+
+        // Total layout height is the tallest column (minus trailing vertical spacing)
+        val totalHeight = (colHeights.maxOrNull() ?: 0).coerceIn(constraints.minHeight, constraints.maxHeight)
+
+        layout(width = constraints.maxWidth, height = totalHeight) {
+            placeables.forEachIndexed { index, placeable ->
+                val pos = placements[index]
+                placeable.placeRelative(x = pos.x, y = pos.y)
+            }
+        }
+    }
+}`,
+      explanation: `### 💡 Core Architectural Concepts in Production
+- **The Three Phases of Compose:** Composition -> Layout (Measure & Place) -> Drawing. By implementing custom \`Layout\`, we perform measuring and placing directly in the Layout phase, avoiding expensive recompositions when children merely reposition.
+- **Single-Pass Measurement Guarantee:** Compose enforces that every node is measured exactly once per layout pass (O(N) efficiency), preventing the exponential 2^N measure cycles of legacy Android nested \`LinearLayout\` with weights.
+- **SubcomposeLayout vs Layout:** Use \`SubcomposeLayout\` ONLY when the composition of child B strictly depends on the measured dimensions of child A (like \`LazyColumn\`). For a known set of composables, \`Layout\` is dramatically more performant and uses zero extra allocations.
+
+### ⚠️ Common Production Gotchas & Anti-Patterns
+- **Reading State in Composition vs Layout:** Do not read fast-changing states (e.g. scroll offsets) inside the body of a custom composable. Pass them through \`Modifier.offset { ... }\` or inside the layout block to skip the composition phase.
+- **Ignoring Constraints minWidth / minHeight:** Custom layouts must always clamp their returned layout dimensions using \`constraints.minWidth..maxWidth\` to support unbounded parent constraints.
+
+### 🎙️ Staff-Level Interview Talking Points
+- **Q: "Why not use nested Row and Columns for masonry grids?"** -> Nested Row/Column requires pre-sorting items into column buckets ahead of time, which breaks dynamic animations and requires manual column redistribution whenever items are added or resized.`,
+      testCases: [
+        { name: "2 Column balanced placement", input: "Items of heights [100, 200, 150, 80]", expected: "Col 0: [100, 150], Col 1: [200, 80] - Balanced" },
+        { name: "Zero item count edge case", input: "Empty content block", expected: "Layout returns (maxWidth, 0) without exceptions" },
+        { name: "Custom horizontal spacing", input: "horizontalSpacing = 16.dp", expected: "Item constraints properly subtract spacing between columns" }
+      ]
+    },
+    {
+      id: "challenge-13",
+      title: "Leak-Free Paging 3 RemoteMediator with Room and Flow",
+      company: "Photon & High-Scale Media",
+      difficulty: "Hard (Lead Level)",
+      category: "Offline-First & Architecture",
+      summary: "Implement a production-grade RemoteMediator that synchronizes paged remote API data with Room SQLite database with transactional consistency.",
+      problemDesc: `Building an endless feed that works completely offline requires Android Jetpack Paging 3's \`RemoteMediator\`. The database serves as the single source of truth for the UI, while the mediator fetches new pages from the network when the database runs out of cached items.
+
+Implement \`NewsRemoteMediator\`:
+1. Extend \`RemoteMediator<Int, ArticleEntity>\` with an atomic Room transaction.
+2. Resolve next/prev page keys based on \`LoadType\` (\`REFRESH\`, \`PREPEND\`, \`APPEND\`).
+3. On \`LoadType.REFRESH\`, clear the old cached items and remote keys atomically.
+4. Insert both new articles and updated \`RemoteKeys\` inside \`database.withTransaction { ... }\`.
+5. Return \`MediatorResult.Success(endOfPaginationReached = isLastPage)\` or \`MediatorResult.Error(e)\`.`,
+      solutionCode: `import androidx.paging.ExperimentalPagingApi
+import androidx.paging.LoadType
+import androidx.paging.PagingState
+import androidx.paging.RemoteMediator
+import androidx.room.withTransaction
+import java.io.IOException
+
+@OptIn(ExperimentalPagingApi::class)
+class NewsRemoteMediator(
+    private val api: NewsApiService,
+    private val database: AppDatabase
+) : RemoteMediator<Int, ArticleEntity>() {
+
+    private val articleDao = database.articleDao()
+    private val remoteKeyDao = database.remoteKeyDao()
+
+    override suspend fun initialize(): InitializeAction {
+        // Launch refresh if cache is older than 1 hour, else use cached data immediately
+        return InitializeAction.LAUNCH_INITIAL_REFRESH
+    }
+
+    override suspend fun load(
+        loadType: LoadType,
+        state: PagingState<Int, ArticleEntity>
+    ): MediatorResult {
+        return try {
+            val page = when (loadType) {
+                LoadType.REFRESH -> {
+                    val remoteKeys = getRemoteKeyClosestToCurrentPosition(state)
+                    remoteKeys?.nextKey?.minus(1) ?: 1
+                }
+                LoadType.PREPEND -> {
+                    val remoteKeys = getRemoteKeyForFirstItem(state)
+                    val prevKey = remoteKeys?.prevKey
+                        ?: return MediatorResult.Success(endOfPaginationReached = remoteKeys != null)
+                    prevKey
+                }
+                LoadType.APPEND -> {
+                    val remoteKeys = getRemoteKeyForLastItem(state)
+                    val nextKey = remoteKeys?.nextKey
+                        ?: return MediatorResult.Success(endOfPaginationReached = remoteKeys != null)
+                    nextKey
+                }
+            }
+
+            val response = api.fetchArticles(page = page, pageSize = state.config.pageSize)
+            val articles = response.items
+            val endOfPagination = articles.isEmpty() || response.isLastPage
+
+            database.withTransaction {
+                if (loadType == LoadType.REFRESH) {
+                    remoteKeyDao.clearRemoteKeys()
+                    articleDao.clearAllArticles()
+                }
+
+                val prevKey = if (page == 1) null else page - 1
+                val nextKey = if (endOfPagination) null else page + 1
+                val keys = articles.map { article ->
+                    ArticleRemoteKey(articleId = article.id, prevKey = prevKey, nextKey = nextKey)
+                }
+
+                remoteKeyDao.insertAll(keys)
+                articleDao.insertAll(articles.map { it.toEntity() })
+            }
+
+            MediatorResult.Success(endOfPaginationReached = endOfPagination)
+        } catch (e: IOException) {
+            MediatorResult.Error(e) // Network connectivity failure
+        } catch (e: Exception) {
+            MediatorResult.Error(e)
+        }
+    }
+
+    private suspend fun getRemoteKeyForLastItem(state: PagingState<Int, ArticleEntity>): ArticleRemoteKey? {
+        return state.pages.lastOrNull { it.data.isNotEmpty() }?.data?.lastOrNull()?.let { article ->
+            remoteKeyDao.getRemoteKeyByArticleId(article.id)
+        }
+    }
+
+    private suspend fun getRemoteKeyForFirstItem(state: PagingState<Int, ArticleEntity>): ArticleRemoteKey? {
+        return state.pages.firstOrNull { it.data.isNotEmpty() }?.data?.firstOrNull()?.let { article ->
+            remoteKeyDao.getRemoteKeyByArticleId(article.id)
+        }
+    }
+
+    private suspend fun getRemoteKeyClosestToCurrentPosition(state: PagingState<Int, ArticleEntity>): ArticleRemoteKey? {
+        return state.anchorPosition?.let { position ->
+            state.closestItemToPosition(position)?.id?.let { id ->
+                remoteKeyDao.getRemoteKeyByArticleId(id)
+            }
+        }
+    }
+}`,
+      explanation: `### 💡 Core Architectural Concepts in Production
+- **Single Source of Truth:** RemoteMediator NEVER pushes data directly to the UI. The UI solely observes \`articleDao.pagingSource()\`. When the database is updated inside \`withTransaction\`, Room automatically notifies PagingSource, triggering smooth UI diffs.
+- **Separate RemoteKeys Table:** Managing pagination boundaries in a dedicated table decouples page numbering from entity schemas. This prevents out-of-order writes when network requests return asynchronously.
+- **InitializeAction.SKIP_INITIAL_REFRESH:** For apps where offline availability is paramount, \`initialize()\` can inspect cache staleness and skip initial refresh if fresh data already resides on disk.
+
+### ⚠️ Common Production Gotchas & Anti-Patterns
+- **Non-Atomic Database Operations:** If articles are inserted without \`withTransaction\`, an error midway leaves orphaned remote keys or missing entities, corrupting endless scroll state.
+- **Memory Leaks via PagingData Caching:** Never collect \`Flow<PagingData>\` in GlobalScope or unbound coroutines. Always apply \`.cachedIn(viewModelScope)\` to survive configuration changes without refetching.
+
+### 🎙️ Staff-Level Interview Talking Points
+- **Q: "Why Paging 3 instead of a custom RecyclerView onScrollListener?"** -> Paging 3 handles deduplication, in-memory caching with operators, bidirectional boundary prefetching, and seamless error recovery state UI bindings out of the box.`,
+      testCases: [
+        { name: "Refresh load inserts page 1", input: "LoadType.REFRESH with 20 items", expected: "Clears old cache, inserts 20 items + keys atomically" },
+        { name: "Append at end of feed", input: "LoadType.APPEND returns empty list", expected: "MediatorResult.Success(endOfPaginationReached = true)" },
+        { name: "Offline network timeout", input: "IOException thrown during fetch", expected: "Returns MediatorResult.Error without database corruption" }
+      ]
+    },
+    {
+      id: "challenge-14",
+      title: "Real-Time Duplex WebSocket Connection Manager with Coroutines Channel",
+      company: "Worktual Innovations & Atlassian",
+      difficulty: "Hard (Lead Level)",
+      category: "Concurrency & Networking",
+      summary: "Architect a resilient WebSocket connection supervisor with Coroutines Channel queuing, ping/pong heartbeats, and exponential jittered reconnection.",
+      problemDesc: `Real-time audio signaling, live chat, and collaborative document editing require an uninterrupted duplex WebSocket connection. When network switches (WiFi to LTE) or servers restart, the connection drops silently.
+
+Construct a resilient \`DuplexWebSocketManager\`:
+1. Use an outgoing queue backed by Kotlin Coroutines \`Channel<SocketMessage>(Channel.BUFFERED)\`.
+2. Implement auto-reconnection with randomized exponential jitter backoff (e.g. 1s, 2s, 4s, 8s + random 0-500ms) to avoid server thundering herds.
+3. Maintain an active ping/pong heartbeat watchdog (send ping every 15s; if no pong received within 10s, forcibly cycle the connection).
+4. Expose incoming messages via \`SharedFlow<SocketMessage>\` or \`StateFlow<ConnectionState>\`.
+5. Ensure zero thread or coroutine leaks upon \`disconnect()\`.`,
+      solutionCode: `import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import okhttp3.*
+import java.util.concurrent.TimeUnit
+import kotlin.random.Random
+
+sealed interface ConnectionState {
+    object Disconnected : ConnectionState
+    object Connecting : ConnectionState
+    object Connected : ConnectionState
+    data class Error(val throwable: Throwable) : ConnectionState
+}
+
+class DuplexWebSocketManager(
+    private val client: OkHttpClient,
+    private val socketUrl: String,
+    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+) {
+    private var webSocket: WebSocket? = null
+    private val sendChannel = Channel<String>(capacity = Channel.BUFFERED)
+    private val connectionMutex = Mutex()
+
+    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
+    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+
+    private val _incomingMessages = MutableSharedFlow<String>(extraBufferCapacity = 64)
+    val incomingMessages: SharedFlow<String> = _incomingMessages.asSharedFlow()
+
+    private var reconnectAttempt = 0
+    private var heartbeatJob: Job? = null
+    private var consumerJob: Job? = null
+
+    fun connect() {
+        coroutineScope.launch {
+            connectionMutex.withLock {
+                if (_connectionState.value == ConnectionState.Connected || 
+                    _connectionState.value == ConnectionState.Connecting) return@launch
+
+                _connectionState.value = ConnectionState.Connecting
+                val request = Request.Builder().url(socketUrl).build()
+
+                webSocket = client.newWebSocket(request, object : WebSocketListener() {
+                    override fun onOpen(ws: WebSocket, response: Response) {
+                        coroutineScope.launch {
+                            connectionMutex.withLock {
+                                _connectionState.value = ConnectionState.Connected
+                                reconnectAttempt = 0
+                                startHeartbeat()
+                                startMessageConsumer()
+                            }
+                        }
+                    }
+
+                    override fun onMessage(ws: WebSocket, text: String) {
+                        coroutineScope.launch { _incomingMessages.emit(text) }
+                    }
+
+                    override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+                        handleDisconnect(t)
+                    }
+
+                    override fun onClosed(ws: WebSocket, code: Int, reason: String) {
+                        handleDisconnect(null)
+                    }
+                })
+            }
+        }
+    }
+
+    suspend fun sendMessage(message: String): Boolean {
+        return sendChannel.trySend(message).isSuccess
+    }
+
+    private fun startMessageConsumer() {
+        consumerJob?.cancel()
+        consumerJob = coroutineScope.launch {
+            for (msg in sendChannel) {
+                webSocket?.send(msg)
+            }
+        }
+    }
+
+    private fun startHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = coroutineScope.launch {
+            while (isActive) {
+                delay(15_000)
+                val sent = webSocket?.send("PING") ?: false
+                if (!sent) {
+                    handleDisconnect(IllegalStateException("Heartbeat failed"))
+                    break
+                }
+            }
+        }
+    }
+
+    private fun handleDisconnect(error: Throwable?) {
+        coroutineScope.launch {
+            connectionMutex.withLock {
+                heartbeatJob?.cancel()
+                webSocket = null
+                _connectionState.value = if (error != null) ConnectionState.Error(error) else ConnectionState.Disconnected
+
+                // Exponential backoff with jitter
+                reconnectAttempt++
+                val delayBase = (1L shl reconnectAttempt.coerceAtMost(6)) * 1000L
+                val jitter = Random.nextLong(100, 600)
+                val totalDelay = delayBase + jitter
+
+                delay(totalDelay)
+                connect()
+            }
+        }
+    }
+
+    fun disconnect() {
+        coroutineScope.launch {
+            connectionMutex.withLock {
+                heartbeatJob?.cancel()
+                consumerJob?.cancel()
+                webSocket?.close(1000, "Normal closure")
+                webSocket = null
+                _connectionState.value = ConnectionState.Disconnected
+            }
+        }
+    }
+}`,
+      explanation: `### 💡 Core Architectural Concepts in Production
+- **Channel Backpressure Buffering:** Using \`Channel<String>(Channel.BUFFERED)\` decouples calling threads (UI or ViewModel) from socket transport latency. Messages queued while temporarily offline are buffered safely until the socket transitions to Connected.
+- **Exponential Jitter:** When an API gateway restarts, thousands of mobile devices attempt reconnection. Adding randomized milliseconds (jitter) flattens traffic spikes, preventing recurring denial-of-service loops on backends.
+- **Active Heartbeat Watchdog:** Mobile cellular networks often drop TCP FIN packets during cell tower handovers, leaving sockets half-open. Periodic PING/PONG application frames actively verify link viability.
+
+### ⚠️ Common Production Gotchas & Anti-Patterns
+- **Unbounded Buffer Overflows:** An unbounded channel can cause \`OutOfMemoryError\` if the device is offline for hours. Use \`BufferOverflow.DROP_OLDEST\` or persist outgoing messages in Room if delivery guarantees are required.
+- **Threading Traps:** OkHttp \`WebSocketListener\` callbacks run on background OkHttp executor threads. Emitting directly to StateFlow or UI state without \`coroutineScope.launch\` can trigger race conditions.
+
+### 🎙️ Staff-Level Interview Talking Points
+- **Q: "How do you distinguish user-initiated disconnect from network failure?"** -> Close code 1000 represents intentional closure (e.g. user logged out), where no auto-reconnect occurs. Network exceptions and 1006 abnormal closures immediately trigger the jittered reconnection state machine.`,
+      testCases: [
+        { name: "Graceful connection & heartbeat", input: "Server accepts socket handshake", expected: "State transitions to Connected; heartbeats run every 15s" },
+        { name: "Unsolicited socket drop", input: "Server drops TCP connection", expected: "Exponential jitter backoff triggered and auto-reconnects" },
+        { name: "Message queuing while connecting", input: "sendMessage() called before socket ready", expected: "Message buffered in Channel and flushed upon onOpen" }
+      ]
+    },
+    {
+      id: "challenge-15",
+      title: "High-Throughput SQLite Room WAL Batch Ingestion Buffer",
+      company: "Global MNC (Daksh) & PayPal",
+      difficulty: "Hard (Lead Level)",
+      category: "Performance & Data Storage",
+      summary: "Construct a non-blocking high-throughput telemetry event batcher that flushes to Room SQLite using Write-Ahead Logging (WAL).",
+      problemDesc: `In high-scale banking, analytics, and IoT mobile applications, background telemetry and audit events arrive at rates exceeding 300+ events per second. Executing individual SQLite insertions triggers massive disk I/O contention, causing UI jank and battery drain.
+
+Construct a production-grade \`HighThroughputEventBatcher\`:
+1. Collect telemetry events into an in-memory buffer using Kotlin Flow.
+2. Flush events to the Room database when EITHER:
+   - Buffer reaches 50 events (batch threshold), OR
+   - 2000 milliseconds pass without a flush (time window).
+3. Execute batch insertions inside a Room \`@Transaction\` or \`withTransaction { ... }\` leveraging Write-Ahead Logging (WAL) mode.
+4. Ensure critical events (e.g. \`EventType.SECURITY_ALERT\`) bypass the buffer for immediate synchronous write.
+5. Provide a \`flushAndClose()\` lifecycle hook that drains pending events when the app moves to background.`,
+      solutionCode: `import androidx.room.withTransaction
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+data class TelemetryEvent(
+    val id: String,
+    val type: String,
+    val payload: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isCritical: Boolean = false
+)
+
+class HighThroughputEventBatcher(
+    private val database: AppDatabase,
+    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+    private val batchSize: Int = 50,
+    private val flushIntervalMs: Long = 2000L
+) {
+    private val eventChannel = Channel<TelemetryEvent>(capacity = 1000)
+    private val flushMutex = Mutex()
+    private var workerJob: Job? = null
+
+    init {
+        startBatchCollector()
+    }
+
+    fun logEvent(event: TelemetryEvent) {
+        if (event.isCritical) {
+            // Immediate write for critical security / audit events
+            coroutineScope.launch {
+                flushMutex.withLock {
+                    database.withTransaction {
+                        database.telemetryDao().insert(event.toEntity())
+                    }
+                }
+            }
+        } else {
+            // Non-blocking queue insertion
+            eventChannel.trySend(event)
+        }
+    }
+
+    private fun startBatchCollector() {
+        workerJob = coroutineScope.launch {
+            val buffer = ArrayList<TelemetryEvent>(batchSize)
+            var lastFlushTime = System.currentTimeMillis()
+
+            while (isActive) {
+                // Poll channel with timeout to respect flushIntervalMs
+                val event = withTimeoutOrNull(flushIntervalMs) {
+                    eventChannel.receive()
+                }
+
+                if (event != null) {
+                    buffer.add(event)
+                }
+
+                val now = System.currentTimeMillis()
+                val shouldFlush = buffer.size >= batchSize || 
+                    (buffer.isNotEmpty() && (now - lastFlushTime) >= flushIntervalMs)
+
+                if (shouldFlush) {
+                    flushBuffer(buffer)
+                    buffer.clear()
+                    lastFlushTime = now
+                }
+            }
+        }
+    }
+
+    private suspend fun flushBuffer(events: List<TelemetryEvent>) {
+        if (events.isEmpty()) return
+        flushMutex.withLock {
+            database.withTransaction {
+                val entities = events.map { it.toEntity() }
+                database.telemetryDao().insertAll(entities)
+            }
+        }
+    }
+
+    suspend fun flushAndClose() {
+        workerJob?.cancelAndJoin()
+        // Drain remaining items from the channel
+        val remaining = mutableListOf<TelemetryEvent>()
+        while (true) {
+            val event = eventChannel.tryReceive().getOrNull() ?: break
+            remaining.add(event)
+        }
+        flushBuffer(remaining)
+    }
+}`,
+      explanation: `### 💡 Core Architectural Concepts in Production
+- **SQLite Write-Ahead Logging (WAL):** By default, SQLite blocks readers when a write is in progress. Enabling WAL (\`Room.databaseBuilder(...).setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)\`) allows readers to concurrently query the database while background threads append to the WAL journal.
+- **Batching Disk Fsyncs:** Each SQLite transaction triggers a disk filesystem sync (\`fsync\`). 50 separate inserts cause 50 expensive disk writes. Wrapping 50 inserts in a single \`withTransaction\` requires exactly ONE \`fsync\`, boosting throughput by over 40x.
+- **Channel trySend vs suspend:** Telemetry logging must NEVER suspend or block the caller. \`trySend()\` returns immediately. If the buffer is full, excess telemetry is safely dropped rather than degrading app performance.
+
+### ⚠️ Common Production Gotchas & Anti-Patterns
+- **Logging Telemetry on the Main Thread:** Inserting into Room or parsing JSON payloads on Dispatchers.Main leads directly to frame drops and ANR dialogs.
+- **Ignoring App Termination:** If the process is killed while events sit in the in-memory channel, data is lost. Register an \`AppLifecycleObserver\` to call \`flushAndClose()\` inside \`ON_STOP\`.
+
+### 🎙️ Staff-Level Interview Talking Points
+- **Q: "Why not use WorkManager for every single telemetry event?"** -> WorkManager is designed for tasks with minimum latency in minutes, writing job metadata to SQLite for every request. Invoking WorkManager 300 times per second would thrash the device disk and grind the app to a halt.`,
+      testCases: [
+        { name: "Batch size trigger", input: "50 events pushed rapidly", expected: "Flushes single batch transaction to Room immediately" },
+        { name: "Time window trigger", input: "10 events pushed, then 2000ms idle", expected: "Flushes 10 events after 2000ms timeout" },
+        { name: "Critical event bypass", input: "Security event with isCritical = true", expected: "Writes to Room synchronously without queue delay" }
+      ]
+    }
   ],
 
   systemDesigns: [
@@ -1460,7 +2097,125 @@ class BitmapMemoryCache(
         { name: "Adaptive Bitrate (ABR) BandwidthMeter", desc: "Dynamically measures network throughput across packet chunks to switch HLS/DASH video rendition profiles smoothly without playback rebuffering." },
         { name: "Widevine DRM & Offline Storage", desc: "Integrates DrmSessionManager to fetch and renew Widevine modular licenses, caching encrypted video segments to disk via SimpleCache for offline playback." }
       ]
-    }  ],
+    }    ,
+    {
+      id: "hld-messaging",
+      title: "Global-Scale Real-Time Messaging & Chat Architecture (WhatsApp / Slack Mobile Engine)",
+      company: "Worktual & Global MNC",
+      difficulty: "Staff / Principal Level",
+      overview: "Architect a fault-tolerant, end-to-end encrypted real-time chat mobile engine supporting 100M+ active users, offline queuing, bidirectional sync, and instant delivery receipts.",
+      diagram: `
++-------------------------------------------------------------+
+|                     PRESENTATION LAYER                       |
+|   Jetpack Compose UI (LazyColumn / Flow) <--- StateFlow     |
++------------------------------+------------------------------+
+                               | UDF Messages / Actions
+                               v
++-------------------------------------------------------------+
+|                      DOMAIN CONTROLLER                       |
+|     MessageSyncCoordinator & State Machine Manager           |
++--------------+-------------------------------+--------------+
+               |                               |
+               v                               v
++-----------------------------+ +-----------------------------+
+|        LOCAL STORAGE        | |      NETWORK ENGINE         |
+|  Room SQLite (WAL Mode)     | |  Duplex WebSocket Gateway   |
+|  - Messages (Pending/Sent)  | |  - Heartbeat Watchdog       |
+|  - Conversations & Contacts | |  - FCM Silent Sync Fallback |
+|  - Offline Outbox Queue     | |  - Resumable Media Upload   |
++-----------------------------+ +-----------------------------+
+               ^                               ^
+               |               Sync            |
+               +-------------------------------+
+`,
+      keyComponents: [
+        { name: "4-State Message Machine", desc: "Tracks each message state: PENDING_SEND (clock), SENT_TO_SERVER (single tick), DELIVERED_TO_DEVICE (double grey tick), READ_BY_RECIPIENT (blue tick)." },
+        { name: "Duplex WebSocket Transport", desc: "Long-lived multiplexed TCP socket handling chat message payloads, typing indicators, and presence updates with zero polling overhead." },
+        { name: "Local SQLite WAL as Single Source of Truth", desc: "UI only renders items directly emitted by Room database Flow. Outgoing messages are persisted locally first before network dispatch." },
+        { name: "End-to-End Encryption (E2EE)", desc: "Implements Signal Protocol double-ratchet session encryption using local hardware Keystore keys, encrypting messages before leaving the device." },
+        { name: "Resumable Chunked Media Engine", desc: "Uploads large videos and images in 512KB chunks with SHA-256 validation, enabling transparent upload resumes across cellular dropouts." },
+        { name: "FCM Push Notification Wakeup", desc: "When the app is killed, incoming FCM high-priority data payloads trigger background sync or push notifications without waking full UI." }
+      ]
+    },
+    {
+      id: "hld-rideshare",
+      title: "Real-Time Driver Geolocation & Dispatch Telemetry Engine (Uber / Grab Mobile Architecture)",
+      company: "Swits Digital & Mobility Track",
+      difficulty: "Staff Mobile Architect",
+      overview: "Design a high-frequency location tracking and map rendering subsystem for a driver/rider dispatch mobile platform operating under strict Android 14/15 battery and foreground constraints.",
+      diagram: `
++-------------------------------------------------------------+
+|                   HARDWARE LOCATION LAYER                    |
+|   FusedLocationProviderClient (GPS + WiFi + Cellular)       |
++------------------------------+------------------------------+
+                               | Raw Coordinates (1Hz)
+                               v
++-------------------------------------------------------------+
+|                   SENSOR FUSION & FILTERING                  |
+|   Kalman Filter Smoothing & Dead Reckoning (Gyro/Accel)      |
++------------------------------+------------------------------+
+                               | Clean Coordinates & Bearing
+                               v
++-------------------------------------------------------------+
+|                     DISPATCH COORDINATOR                     |
+|  - Geohash Proximity Calculation                            |
+|  - Android 14+ FGS Location Notification Controller         |
++--------------+-------------------------------+--------------+
+               |                               |
+               v                               v
++-----------------------------+ +-----------------------------+
+|        MAP RENDERING        | |     TELEMETRY DISPATCH      |
+|  Hardware Vector Surface    | |  WebSocket Telemetry Queue  |
+|  Marker Smooth Interpolator | |  - Exponential Backoff Sync |
+|  Snapping to Road Network   | |  - Network Loss Ring Buffer |
++-----------------------------+ +-----------------------------+
+`,
+      keyComponents: [
+        { name: "Adaptive Location Provider", desc: "Uses FusedLocationProviderClient with dynamic intervals: 1s updates when moving > 20km/h, backing off to 15s when vehicle is stationary." },
+        { name: "Kalman Filter & Dead Reckoning", desc: "Smooths erratic GPS jumps in urban canyons (between tall buildings) by fusing accelerometer and gyroscope readings with road network vectors." },
+        { name: "Android 14+ Location FGS Constraints", desc: "Implements strict foregroundServiceType='location' with required runtime permissions (ACCESS_FINE_LOCATION, FOREGROUND_SERVICE_LOCATION)." },
+        { name: "Smooth Marker Interpolation", desc: "Computes spherical spline interpolation (lerp) on the render thread so driver vehicle icons glide fluidly across turns without jumping." },
+        { name: "Offline Geolocation Ring Buffer", desc: "Buffers up to 500 GPS coordinate points in a circular memory queue during tunnel transits, flushing in a single compressed batch upon reconnect." }
+      ]
+    },
+    {
+      id: "hld-superapp",
+      title: "Dynamic Modular Architecture & Micro-Apps Super-App Platform",
+      company: "TCS & Enterprise Modernizers",
+      difficulty: "Principal Mobile Architect",
+      overview: "Architect an enterprise super-app platform enabling 20+ independent product squads to build, test, and dynamically deploy independent feature modules without merge conflicts or monolithic bloat.",
+      diagram: `
++-------------------------------------------------------------+
+|                       BASE APP SHELL                         |
+|   Root Navigator, Design System & Core Dependency Graph      |
++------------------------------+------------------------------+
+                               | Dynamic Feature Delivery
+         +---------------------+---------------------+
+         |                                           |
+         v                                           v
++-----------------------------+             +-----------------------------+
+|     FEATURE MODULE: PAY     |             |    FEATURE MODULE: RETAIL   |
+|  - Isolated Hilt Component  |             |  - Isolated Hilt Component  |
+|  - Own Room Tables & Repos  |             |  - Own Room Tables & Repos  |
+|  - Downloaded On-Demand     |             |  - Downloaded On-Demand     |
++--------------+--------------+             +--------------+--------------+
+               |                                           |
+               +---------------------+---------------------+
+                                     v
++-------------------------------------------------------------+
+|                  CORE FOUNDATION LIBRARIES                   |
+|   :core:network  |  :core:database  |  :core:navigation-api |
++-------------------------------------------------------------+
+`,
+      keyComponents: [
+        { name: "Play Feature Delivery (DFMs)", desc: "Splits 150MB monolith into lean 25MB base APK with auxiliary features downloaded dynamically over-the-air only when user taps feature." },
+        { name: "Decoupled Contract Router Registry", desc: "Modules communicate strictly via abstract interface contracts (:navigation-api) with zero direct compile-time classpath dependencies between features." },
+        { name: "Hierarchical Dagger/Hilt Subgraphs", desc: "Base application component exposes foundational singletons (OkHttpClient, KeyStore); feature subcomponents create and dispose feature scopes dynamically." },
+        { name: "Isolated Crash Circuit Breaker", desc: "If an on-demand micro-app crashes, an uncaught exception boundary isolates the fault, offering a graceful reset without crashing the host super-app." },
+        { name: "Server-Driven Feature Flagging", desc: "Dynamic configuration engine switches feature entry points, runs staged A/B rollouts, and performs instant remote kill-switches if bugs emerge." }
+      ]
+    }
+  ],
 
   quizQuestions: [
     {
@@ -1559,7 +2314,104 @@ class BitmapMemoryCache(
       ],
       correctIndex: 1,
       explanation: "SurfaceView punches a hole directly through the window to a dedicated surface composited directly by SurfaceFlinger, saving GPU bandwidth and power. TextureView behaves as a regular View in the hierarchy (requiring an extra OpenGL composition step), which introduces 1-3 frames of latency and higher battery drain."
-    }  ]
+    }    ,
+    {
+      id: "q9",
+      question: "Android 15 introduces support for 16 KB memory page sizes (up from 4 KB). What is the primary impact on Android application development?",
+      options: [
+        "Pure Kotlin and Java applications with no native code automatically fail to run.",
+        "Apps that use C/C++ native shared libraries (.so files) must recompile and align ELF segments to 16 KB boundaries, or they will crash upon launch on 16 KB devices.",
+        "Jetpack Compose composables will consume 4x more GPU memory.",
+        "Room database files cannot exceed 16 KB in total size."
+      ],
+      correctIndex: 1,
+      explanation: "While pure Java/Kotlin code is unaffected, native C/C++ libraries (such as game engines, custom cryptography, or media codecs) compiled with 4 KB ELF page alignment fail to load on Android 15 devices configured with 16 KB pages. Developers must recompile native code with 16 KB page alignment using modern NDK r27+."
+    },
+    {
+      id: "q10",
+      question: "Why does passing large data models (e.g. detailed bitmap or list of 1,000 items) via Intent extras or SavedStateHandle cause a TransactionTooLargeException crash?",
+      options: [
+        "Android OS limits all Intent extras to 16 bytes.",
+        "The Binder IPC transaction buffer is shared across all ongoing IPC transactions for the entire process and has a strict maximum size limit of approximately 1 MB.",
+        "SavedStateHandle writes directly to read-only hardware ROM.",
+        "Kotlin data classes cannot be serialized to Parcelable."
+      ],
+      correctIndex: 1,
+      explanation: "The Android Binder kernel buffer has a hard cap of approximately 1 MB shared across the whole process for all concurrent Binder calls. Exceeding this limit throws TransactionTooLargeException. Best practice is to store large datasets in Room SQLite or disk cache and pass only unique IDs in Intent/SavedStateHandle."
+    },
+    {
+      id: "q11",
+      question: "In Jetpack Compose, how does mutableStateOf(value, policy) behave when configured with 'neverEqualPolicy()'?",
+      options: [
+        "It treats all values as equal and permanently suppresses recomposition.",
+        "Every write to the state object is treated as an update, triggering recomposition even if the new value is identical to the current value.",
+        "It crashes the Compose runtime if assigned twice.",
+        "It only triggers recomposition when value is null."
+      ],
+      correctIndex: 1,
+      explanation: "By default, mutableStateOf uses 'structuralEqualityPolicy()' which compares values using .equals(). Setting 'neverEqualPolicy()' instructs the Compose snapshot engine to always treat assignments as mutations, triggering recomposition whenever the setter is invoked, even with the identical instance."
+    },
+    {
+      id: "q12",
+      question: "What is the primary difference between Coroutines 'Dispatchers.Default' and 'Dispatchers.IO' in Kotlin Coroutines on Android?",
+      options: [
+        "Dispatchers.IO runs on the Android main thread, whereas Dispatchers.Default runs on background threads.",
+        "Dispatchers.Default is limited to the number of available CPU cores (at least 2) for CPU-bound computations; Dispatchers.IO is an elastic pool (up to 64 threads or core count) designed for blocking I/O.",
+        "Dispatchers.IO cannot execute network calls.",
+        "Dispatchers.Default does not support cancellation."
+      ],
+      correctIndex: 1,
+      explanation: "Dispatchers.Default is tuned for CPU-intensive tasks (sorting, JSON parsing, crypto) and caps its thread pool to the number of CPU cores to avoid context-switching overhead. Dispatchers.IO is designed for blocking calls (disk, SQLite, network) and can grow up to 64 threads, sharing threads with Default."
+    },
+    {
+      id: "q13",
+      question: "How do Android App Links provide superior security over standard Custom URL Schemes (e.g. 'myapp://path') for deep linking?",
+      options: [
+        "App Links require users to enter a biometric password before opening.",
+        "App Links require cryptographic digital asset verification (assetlinks.json hosted on the HTTPS domain), allowing the OS to verify domain ownership and prevent other apps from hijacking the URL.",
+        "Custom URL Schemes cannot pass query parameters.",
+        "App Links can only be opened when the device is in airplane mode."
+      ],
+      correctIndex: 1,
+      explanation: "Custom URL Schemes allow any rogue app to declare the same scheme in their manifest, creating deep link ambiguity or interception. Android App Links verify domain ownership via a cryptographically signed assetlinks.json file hosted on the website's HTTPS domain, allowing Android to open the verified app directly without a disambiguation dialog."
+    },
+    {
+      id: "q14",
+      question: "When ProGuard / R8 full mode is enabled for a release build, why do JSON deserializers like Moshi or Gson frequently throw NullPointerException on Kotlin non-null fields?",
+      options: [
+        "R8 deletes all JSON files from the device storage.",
+        "R8 obfuscates or removes class field names and default constructors unless preserved via @Keep or ProGuard rules, causing reflection to fail or instantiate fields as null via Unsafe.",
+        "Kotlin Coroutines disable R8 in release builds.",
+        "Android ART does not support JSON serialization."
+      ],
+      correctIndex: 1,
+      explanation: "R8 shrinks, renames, and merges fields and constructors during optimization. If data classes parsed via reflection are not annotated with @Keep or preserved via -keepclassmembers, field names are renamed (e.g. to 'a', 'b'), preventing JSON keys from matching and causing fields to remain null or throw exceptions."
+    },
+    {
+      id: "q15",
+      question: "Why can an Android application crash with an 'OutOfMemoryError' (OOM) even when the Android Studio Memory Profiler shows Dalvik/ART heap usage is well below the maximum limit?",
+      options: [
+        "Dalvik heap memory is only used for XML layout files.",
+        "OOM can occur due to virtual address space exhaustion in 32-bit processes, native memory exhaustion (e.g. C++ allocations, Bitmaps in native memory), or inability to allocate a contiguous block due to memory fragmentation.",
+        "Android terminates apps with OOM whenever battery is below 15%.",
+        "The OS reserves 90% of heap exclusively for system broadcasts."
+      ],
+      correctIndex: 1,
+      explanation: "An OutOfMemoryError is thrown whenever the system cannot satisfy an allocation request. This happens not only when Java heap is full, but also when native memory (C++ allocations, OpenGL textures) is exhausted, when virtual address space is depleted, or when severe heap fragmentation prevents finding a contiguous memory block for a large allocation."
+    },
+    {
+      id: "q16",
+      question: "What is the primary performance overhead of Jetpack Compose 'SubcomposeLayout' compared to a standard 'Layout'?",
+      options: [
+        "SubcomposeLayout runs all composables on a background thread.",
+        "SubcomposeLayout defers the composition of sub-trees until the measurement pass, breaking single-pass layout guarantees and incurring extra composition overhead.",
+        "SubcomposeLayout cannot be used with animations.",
+        "SubcomposeLayout disables hardware acceleration."
+      ],
+      correctIndex: 1,
+      explanation: "Standard 'Layout' composes all children upfront and measures them in a single O(N) pass. 'SubcomposeLayout' allows composing children dynamically during the measurement pass (necessary for Lazy lists to only compose visible items), but this introduces re-entrancy into the composition runtime and incurs measurable CPU overhead if misused for static layouts."
+    }
+  ]
 };
 
 // Expose globally

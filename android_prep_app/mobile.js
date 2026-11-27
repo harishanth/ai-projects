@@ -78,6 +78,53 @@ const CHEAT_DATA = [
       { text: "For sensitive actions (funds transfer), require <code>setUserAuthenticationRequired(true)</code> with <code>BiometricPrompt.CryptoObject</code>.", type: "normal" },
       { text: "Store SQLite databases encrypted with <strong>SQLCipher</strong>, deriving the database master key from KeyStore rather than hardcoding.", type: "warning" }
     ]
+  }  ,
+  {
+    id: "cheat-arch-1",
+    category: "architecture",
+    categoryName: "System Design",
+    title: "Mobile System Design & Scale Checklist",
+    points: [
+      { text: "Always establish <strong>Functional vs Non-Functional Requirements</strong> (DAU, p99 latency, offline mutation queue, battery limits) at the start.", type: "normal" },
+      { text: "Client <strong>Single Source of Truth</strong>: UI (Compose) only listens to Room database Flow. Mutations write to SQLite before network sync.", type: "normal" },
+      { text: "Implement <strong>exponential backoff with randomized jitter</strong> on API retries to avoid crashing recovering backend gateways.", type: "warning" },
+      { text: "Use <strong>WorkManager Expedited Requests</strong> for persistent sync that survives app process death and device reboots.", type: "normal" }
+    ]
+  },
+  {
+    id: "cheat-flow-1",
+    category: "coroutines",
+    categoryName: "Coroutines & Flow",
+    title: "Flow Concurrency: flatMapLatest, buffer & conflate",
+    points: [
+      { text: "<code>flatMapLatest</code> cancels the previous ongoing background search when a new user keystroke arrives.", type: "normal" },
+      { text: "<code>buffer()</code> decouples producer emission speed from slow consumers using an internal channel.", type: "normal" },
+      { text: "<code>conflate()</code> drops intermediate values if the collector is busy, only delivering the latest emission.", type: "warning" },
+      { text: "<code>combine</code> emits on changes to either flow; <code>zip</code> requires one value from each stream in lockstep.", type: "normal" }
+    ]
+  },
+  {
+    id: "cheat-perf-1",
+    category: "performance",
+    categoryName: "Performance & Memory",
+    title: "1MB Binder IPC Limit & 16KB Page Alignment",
+    points: [
+      { text: "The Android Binder IPC transaction buffer has an aggregate <strong>1MB limit</strong> across the entire process. Exceeding it throws <code>TransactionTooLargeException</code>.", type: "danger" },
+      { text: "Never pass large lists or byte arrays through <code>Intent</code> or <code>SavedStateHandle</code>; persist to Room and pass unique IDs.", type: "warning" },
+      { text: "Android 15 mandates <strong>16 KB Page Alignment</strong> for native C/C++ <code>.so</code> libraries.", type: "normal" },
+      { text: "Free in-memory bitmap caches dynamically during <code>ComponentCallbacks2.onTrimMemory()</code> to avoid Low Memory Killer (LMK) eviction.", type: "normal" }
+    ]
+  },
+  {
+    id: "cheat-arch-2",
+    category: "architecture",
+    categoryName: "System Design",
+    title: "Multi-Module Architecture & Play Feature Delivery",
+    points: [
+      { text: "Decouple modules into <code>:feature:name-api</code> (contracts) and <code>:feature:name-impl</code> to eliminate circular Gradle dependencies.", type: "normal" },
+      { text: "Use <strong>Play Feature Delivery (DFMs)</strong> to extract heavy features into dynamic downloadable modules, minimizing base APK download size.", type: "normal" },
+      { text: "Structure <strong>Dagger/Hilt subcomponents</strong> to dispose of feature-scoped dependencies immediately when the user exits the feature.", type: "normal" }
+    ]
   }
 ];
 
