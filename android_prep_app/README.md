@@ -35,12 +35,21 @@ An interactive technical interview preparation hub tailored for **Senior Android
    - Jetpack Compose stability, recomposition traps, and memory profiling guidelines.
    - OWASP Mobile Top 10 security checklist.
 
+6. **📱 Dedicated Mobile-Only Essential Version (`mobile.html`)**
+   - Lightweight, distraction-free smartphone experience designed for on-the-go review (commutes & pre-interview refresher).
+   - **Pocket Cheatsheets**: Touch-friendly reference cards for Coroutines, Jetpack Compose traps, Android 14/15 FGS, and OWASP security.
+   - **Touch Flashcard Quiz**: Interactive scenario-based MCQ engine with immediate feedback, staff rationale, and score tracking.
+   - **Condensed Coding Talking Points**: High-yield architecture patterns, critical gotchas, and staff defense points with an expandable bottom sheet for the complete Kotlin solution.
+   - **Company Intel Pocket Directory**: Fast search & filter of all 14 tracked firms and round-by-round interview breakdowns.
+   - Seamless progress & theme synchronization with the full desktop studio via `localStorage`.
+
 ---
 
 ## 🛠️ Local Development & Running
 
 ### Option 1: Direct File
-Open `index.html` directly in any modern browser.
+- Open `index.html` directly for the full Desktop Studio.
+- Open `mobile.html` directly for the Mobile-Only Essential Version.
 
 ### Option 2: Local Python Server
 ```bash
@@ -50,7 +59,8 @@ or
 ```bash
 python3 server.py
 ```
-Then visit `http://localhost:8090`.
+- Desktop Studio: `http://localhost:8090`
+- Mobile-Only Version: `http://localhost:8090/mobile.html`
 
 ---
 

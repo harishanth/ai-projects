@@ -85,10 +85,15 @@
               <span class="badge badge-lead">10-11 Yrs Lead</span>
             </div>
           </div>
-          <a href="https://docs.google.com/spreadsheets/d/1YkA9gZH8PYWQV1GyPNQLYX9Eh6oAXiYPw1uWs2oLaDw/edit" target="_blank" rel="noopener noreferrer" class="mobile-sheet-btn" title="Open Google Sheet">
-            <span>📈 Sheet</span>
-            <span>↗</span>
-          </a>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <a href="mobile.html" class="mobile-app-badge-btn" title="Switch to Mobile Version">
+              <span>📱 Mobile</span>
+            </a>
+            <a href="https://docs.google.com/spreadsheets/d/1YkA9gZH8PYWQV1GyPNQLYX9Eh6oAXiYPw1uWs2oLaDw/edit" target="_blank" rel="noopener noreferrer" class="mobile-sheet-btn" title="Open Google Sheet">
+              <span>📈 Sheet</span>
+              <span>↗</span>
+            </a>
+          </div>
         </div>
 
         <div class="search-box">
@@ -148,6 +153,11 @@
           <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode" onclick="toggleTheme()">
             <span class="theme-icon">🌙</span>
           </button>
+
+          <a href="mobile.html" class="mobile-switch-link-btn" title="Open Mobile-Only Essential Version">
+            <span class="btn-icon">📱</span>
+            <span class="btn-label">Mobile App</span>
+          </a>
 
           <button id="geminiKeyBtn" class="ai-key-btn" title="Configure Gemini API Key (BYOK)" aria-label="Configure Gemini API Key" onclick="openGeminiModal()">
             <span class="ai-btn-icon">🤖</span>

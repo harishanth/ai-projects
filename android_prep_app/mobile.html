@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AndroidPrep Mobile - Lead & Staff Interview Prep</title>
+  <link rel="stylesheet" href="mobile.css?v=1.0.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top App Bar -->
+  <header class="mobile-topbar">
+    <a href="mobile.html" class="topbar-brand">
+      <span class="brand-icon">🤖</span>
+      <div>
+        <span class="brand-title">AndroidPrep</span>
+        <span class="brand-badge">Lead</span>
+      </div>
+    </a>
+
+    <div class="topbar-actions">
+      <div class="readiness-chip" id="mobileReadinessChip">
+        <span class="pulse-dot"></span>
+        <span id="mobileReadinessText">0% Ready</span>
+      </div>
+
+      <button id="mobileThemeBtn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode" onclick="toggleMobileTheme()">
+        <span id="mobileThemeIcon">🌙</span>
+      </button>
+
+      <a href="index.html" class="desktop-switch-btn" title="Switch to Full Desktop Studio">
+        <span>💻 Full App</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Mobile Viewport Container -->
+  <div class="mobile-viewport-container">
+
+    <!-- Tab 1: ⚡ Pocket Cheatsheets -->
+    <section id="screenCheats" class="tab-screen active">
+      <div class="screen-header">
+        <h1 class="screen-title">⚡ Pocket Cheatsheets</h1>
+        <p class="screen-subtitle">High-yield reference cards & pitfalls for senior Android interviews</p>
+      </div>
+
+      <div class="search-chip-bar">
+        <div class="search-box-wrapper">
+          <span class="search-lens-icon">🔍</span>
+          <input type="text" id="cheatsSearchInput" class="mobile-search-input" placeholder="Search rules (e.g. Mutex, @Stable, FGS)..." oninput="filterCheats()">
+        </div>
+        <div class="chips-scroll-container">
+          <button class="filter-chip active" data-cheat-cat="all" onclick="setCheatFilter('all', this)">All Topics</button>
+          <button class="filter-chip" data-cheat-cat="coroutines" onclick="setCheatFilter('coroutines', this)">Coroutines & Flow</button>
+          <button class="filter-chip" data-cheat-cat="compose" onclick="setCheatFilter('compose', this)">Compose Stability</button>
+          <button class="filter-chip" data-cheat-cat="platform" onclick="setCheatFilter('platform', this)">Android 14/15</button>
+          <button class="filter-chip" data-cheat-cat="security" onclick="setCheatFilter('security', this)">OWASP Security</button>
+        </div>
+      </div>
+
+      <div class="cheat-cards-list" id="cheatsListContainer">
+        <!-- Rendered dynamically by mobile.js -->
+      </div>
+    </section>
+
+    <!-- Tab 2: 🧠 Touch Quiz & Gotchas -->
+    <section id="screenQuiz" class="tab-screen">
+      <div class="screen-header">
+        <h1 class="screen-title">🧠 Internals & Gotchas Quiz</h1>
+        <p class="screen-subtitle">Scenario-based flashcard test with instant rationale</p>
+      </div>
+
+      <div class="quiz-mobile-container" id="quizContainer">
+        <!-- Rendered dynamically by mobile.js -->
+      </div>
+    </section>
+
+    <!-- Tab 3: 🎯 Coding Talking Points -->
+    <section id="screenChallenges" class="tab-screen">
+      <div class="screen-header">
+        <h1 class="screen-title">🎯 Essential Challenges</h1>
+        <p class="screen-subtitle">Core patterns, critical traps & interview talking points</p>
+      </div>
+
+      <div class="search-chip-bar">
+        <div class="search-box-wrapper">
+          <span class="search-lens-icon">🔍</span>
+          <input type="text" id="challengesSearchInput" class="mobile-search-input" placeholder="Search challenges (e.g. Token, Cache, Mutex)..." oninput="filterChallenges()">
+        </div>
+        <div class="chips-scroll-container">
+          <button class="filter-chip active" data-chall-cat="all" onclick="setChallengeFilter('all', this)">All</button>
+          <button class="filter-chip" data-chall-cat="Concurrency" onclick="setChallengeFilter('Concurrency', this)">Concurrency</button>
+          <button class="filter-chip" data-chall-cat="Compose" onclick="setChallengeFilter('Compose', this)">Compose UI</button>
+          <button class="filter-chip" data-chall-cat="Networking" onclick="setChallengeFilter('Networking', this)">Networking</button>
+          <button class="filter-chip" data-chall-cat="Offline-First" onclick="setChallengeFilter('Offline-First', this)">Offline-First</button>
+        </div>
+      </div>
+
+      <div class="challenge-cards-list" id="challengesListContainer">
+        <!-- Rendered dynamically by mobile.js -->
+      </div>
+    </section>
+
+    <!-- Tab 4: 🏢 Company Intel Pocket Directory -->
+    <section id="screenCompanies" class="tab-screen">
+      <div class="screen-header">
+        <h1 class="screen-title">🏢 Company Intel</h1>
+        <p class="screen-subtitle">14 tracked Chennai & Remote tech pipelines and round criteria</p>
+      </div>
+
+      <div class="search-chip-bar">
+        <div class="search-box-wrapper">
+          <span class="search-lens-icon">🔍</span>
+          <input type="text" id="companiesSearchInput" class="mobile-search-input" placeholder="Search companies, tech stack, skills..." oninput="filterCompanies()">
+        </div>
+        <div class="chips-scroll-container">
+          <button class="filter-chip active" data-comp-cat="all" onclick="setCompanyFilter('all', this)">All (14)</button>
+          <button class="filter-chip" data-comp-cat="Remote" onclick="setCompanyFilter('Remote', this)">Remote</button>
+          <button class="filter-chip" data-comp-cat="Chennai" onclick="setCompanyFilter('Chennai', this)">Chennai</button>
+          <button class="filter-chip" data-comp-cat="Top Priority" onclick="setCompanyFilter('Top Priority', this)">Staff Track</button>
+        </div>
+      </div>
+
+      <div class="companies-cards-list" id="companiesListContainer">
+        <!-- Rendered dynamically by mobile.js -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="mobile-bottomnav" role="tablist">
+    <button class="nav-tab-btn active" data-target="screenCheats" onclick="switchMobileTab('screenCheats', this)" role="tab" aria-selected="true">
+      <span class="tab-icon">⚡</span>
+      <span class="tab-label">Cheats</span>
+    </button>
+    <button class="nav-tab-btn" data-target="screenQuiz" onclick="switchMobileTab('screenQuiz', this)" role="tab" aria-selected="false">
+      <span class="tab-icon">🧠</span>
+      <span class="tab-label">Quiz</span>
+    </button>
+    <button class="nav-tab-btn" data-target="screenChallenges" onclick="switchMobileTab('screenChallenges', this)" role="tab" aria-selected="false">
+      <span class="tab-icon">🎯</span>
+      <span class="tab-label">Coding</span>
+    </button>
+    <button class="nav-tab-btn" data-target="screenCompanies" onclick="switchMobileTab('screenCompanies', this)" role="tab" aria-selected="false">
+      <span class="tab-icon">🏢</span>
+      <span class="tab-label">Companies</span>
+    </button>
+  </nav>
+
+  <!-- Slide-up Bottom Sheet Modal for Kotlin Code & Deep Dives -->
+  <div class="bottom-sheet-backdrop" id="bottomSheetBackdrop" onclick="closeBottomSheet()"></div>
+  <div class="bottom-sheet" id="bottomSheetModal" role="dialog" aria-modal="true">
+    <div class="sheet-handle-bar" onclick="closeBottomSheet()">
+      <div class="sheet-handle"></div>
+    </div>
+    <div class="sheet-header">
+      <h3 class="sheet-title" id="sheetTitle">Solution Code</h3>
+      <button class="sheet-close-btn" onclick="closeBottomSheet()" aria-label="Close dialog">&times;</button>
+    </div>
+    <div class="sheet-body" id="sheetBody">
+      <!-- Injected dynamically -->
+    </div>
+  </div>
+
+  <!-- Mobile Toast Notification -->
+  <div class="mobile-toast" id="mobileToast">Notification</div>
+
+  <!-- Application Scripts -->
+  <script src="data.js"></script>
+  <script src="mobile.js"></script>
+</body>
+</html>
