@@ -57,6 +57,7 @@ function initApp() {
   renderCodingArena();
   renderSystemDesign();
   renderQuiz();
+  renderDesktopCheats();
   updateReadiness();
 }
 
@@ -421,6 +422,8 @@ function updateReadiness() {
   if (heroHld) heroHld.textContent = `🏛️ ${totalHld} System Blueprints`;
   const heroQuiz = document.getElementById('heroQuizCount');
   if (heroQuiz) heroQuiz.textContent = `🧠 ${totalQuiz} Internals Quizzes`;
+  const heroCheats = document.getElementById('heroCheatsCount');
+  if (heroCheats) heroCheats.textContent = `⚡ ${(APP_DATA.cheatSheets || []).length} Cheat Cards`;
 
   // Update circular ring gradient
   const ring = document.getElementById('dashboardProgressRing');
@@ -814,6 +817,7 @@ function renderQuiz() {
 function selectQuizOption(optIdx) {
   STATE.quizState.answers[STATE.quizState.currentIndex] = optIdx;
   renderQuiz();
+  renderDesktopCheats();
   updateReadiness();
 }
 
@@ -828,8 +832,74 @@ function restartQuiz() {
   STATE.quizState.currentIndex = 0;
   STATE.quizState.answers = {};
   renderQuiz();
+  renderDesktopCheats();
   updateReadiness();
 }
+
+
+// 9b. Render Desktop Cheatsheets
+function renderDesktopCheats() {
+  const container = document.getElementById('desktopCheatsheetGrid');
+  if (!container) return;
+
+  const search = (document.getElementById('desktopCheatSearch')?.value || '').toLowerCase().trim();
+  const category = document.getElementById('desktopCheatCategoryFilter')?.value || 'all';
+  const cheats = APP_DATA.cheatSheets || [];
+
+  const filtered = cheats.filter(item => {
+    const matchesCat = category === 'all' || item.category === category;
+    const matchesSearch = !search ||
+      item.title.toLowerCase().includes(search) ||
+      item.categoryName.toLowerCase().includes(search) ||
+      item.points.some(p => p.text.toLowerCase().includes(search));
+    return matchesCat && matchesSearch;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 48px 16px; color: var(--text-muted);">
+        <p style="font-size: 32px; margin-bottom: 8px;">🔍</p>
+        <p style="font-size: 16px; font-weight: 600;">No cheat cards match your search.</p>
+        <p style="font-size: 13px; margin-top: 4px;">Try searching for "Coroutines", "Compose", "16KB", or "Mutex"</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(card => {
+    const titleEscaped = card.title.replace(/'/g, "\\'");
+    return `
+      <div class="cheat-card" id="${card.id}">
+        <div class="cheat-header">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="cheat-icon">${card.icon || '📌'}</span>
+            <div>
+              <h3>${card.title}</h3>
+              <span class="category-tag" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-body); border: 1px solid var(--border); color: var(--accent-primary);">${card.categoryName}</span>
+            </div>
+          </div>
+          <button class="section-maximize-btn" onclick="toggleMaximize('#${card.id}', '${titleEscaped}')" title="Maximize Card to Declutter">
+            <span class="max-icon">⛶</span>
+          </button>
+        </div>
+        <ul class="cheat-list">
+          ${card.points.map(pt => `
+            <li class="${pt.type || 'normal'}">
+              ${pt.text}
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterDesktopCheats() {
+  renderDesktopCheats();
+}
+
+window.renderDesktopCheats = renderDesktopCheats;
+window.filterDesktopCheats = filterDesktopCheats;
 
 // 10. Cross Navigation from Company Cards
 function openSystemDesignForCompany(companyName) {

@@ -209,7 +209,11 @@ function renderCheats() {
   const query = (document.getElementById('cheatsSearchInput')?.value || '').toLowerCase().trim();
   const filter = MOBILE_STATE.cheatFilter;
 
-  const filtered = CHEAT_DATA.filter(item => {
+  const allCheats = (window.APP_DATA && window.APP_DATA.cheatSheets && window.APP_DATA.cheatSheets.length > 0)
+    ? window.APP_DATA.cheatSheets
+    : CHEAT_DATA;
+
+  const filtered = allCheats.filter(item => {
     const matchesCat = filter === 'all' || item.category === filter;
     const matchesQuery = !query || 
       item.title.toLowerCase().includes(query) || 

@@ -2217,6 +2217,609 @@ class HighThroughputEventBatcher(
     }
   ],
 
+  cheatSheets: [
+    {
+      id: "cheat-coroutine-job",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "🧵",
+      title: "Job vs SupervisorJob & Failure Isolation",
+      points: [
+        { text: "In a standard <strong>Job</strong>, an unhandled exception in any child cancels the parent, which immediately cancels all sibling coroutines.", type: "danger" },
+        { text: "Use <strong>SupervisorJob()</strong> or <strong>supervisorScope { }</strong> so failure in one child is contained and does NOT cancel siblings or parent.", type: "normal" },
+        { text: "Passing <code>SupervisorJob()</code> to <code>launch(SupervisorJob())</code> does NOT isolate nested children launched inside it; you must use <code>supervisorScope</code>.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-flow-state-shared",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "🌊",
+      title: "StateFlow vs SharedFlow vs Channel",
+      points: [
+        { text: "<strong>StateFlow:</strong> Hot state holder, requires initial value, replays 1, and filters identical consecutive values (<code>distinctUntilChanged</code>).", type: "normal" },
+        { text: "<strong>SharedFlow:</strong> Event bus with customizable replay and buffer overflow policy (<code>BufferOverflow.DROP_OLDEST</code>); perfect for UI navigation events.", type: "normal" },
+        { text: "<strong>Channel:</strong> 1-to-1 communication queue where each emission is consumed by exactly ONE receiver.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-coroutine-mutex",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "🔒",
+      title: "Mutex vs Synchronized & Cancellation",
+      points: [
+        { text: "Never use Java <code>synchronized</code> or <code>ReentrantLock</code> in coroutines; they block the underlying OS carrier thread.", type: "danger" },
+        { text: "Always use <code>Mutex.withLock { ... }</code> which suspends rather than blocks OS threads.", type: "normal" },
+        { text: "Never swallow <code>CancellationException</code> without re-throwing it, otherwise cooperative cancellation breaks.", type: "danger" }
+      ]
+    },
+    {
+      id: "cheat-flow-operators",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "⚡",
+      title: "Flow Operators: flatMapLatest, buffer & conflate",
+      points: [
+        { text: "<code>flatMapLatest</code> cancels the previous upstream processing block whenever a new value emits (search autocomplete).", type: "normal" },
+        { text: "<code>buffer()</code> creates an asynchronous buffer between producer and consumer to prevent backpressure stalls.", type: "normal" },
+        { text: "<code>conflate()</code> drops intermediate emissions if the collector is busy, delivering only the newest value.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-dispatchers",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "⚙️",
+      title: "Dispatchers: Default vs IO vs limitedParallelism",
+      points: [
+        { text: "<strong>Dispatchers.Default:</strong> Sized to CPU core count (minimum 2); ideal for compute, JSON parsing, and sorting.", type: "normal" },
+        { text: "<strong>Dispatchers.IO:</strong> Elastic pool up to 64 threads for blocking disk and network I/O.", type: "normal" },
+        { text: "Use <code>Dispatchers.IO.limitedParallelism(N)</code> to restrict concurrent tasks (e.g. database access) without creating new threads.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-coroutine-lifecycle",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "🔄",
+      title: "repeatOnLifecycle vs launchWhenStarted",
+      points: [
+        { text: "<code>launchWhenStarted</code> is deprecated: it suspends collection in the background, keeping upstream producers active and draining battery.", type: "danger" },
+        { text: "Always use <code>lifecycleScope.launch { repeatOnLifecycle(Lifecycle.State.STARTED) { flow.collect() } }</code>.", type: "normal" },
+        { text: "In Compose UI, use <code>collectAsStateWithLifecycle()</code> instead of <code>collectAsState()</code>.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-coroutine-testing",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "🧪",
+      title: "Turbine & StandardTestDispatcher Testing",
+      points: [
+        { text: "Use <strong>StandardTestDispatcher</strong> with <code>runTest</code> for full virtual time control (<code>advanceUntilIdle()</code>).", type: "normal" },
+        { text: "Use <strong>UnconfinedTestDispatcher</strong> when eager execution of child coroutines is preferred without explicit advances.", type: "normal" },
+        { text: "Use <strong>Turbine</strong> (<code>flow.test { assertEquals(val, awaitItem()) }</code>) to assert flow streams without flaky thread delays.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-coroutine-cancellation",
+      category: "coroutines",
+      categoryName: "Coroutines & Flow",
+      icon: "🛑",
+      title: "suspendCancellableCoroutine & Clean Teardown",
+      points: [
+        { text: "When adapting legacy callback APIs, always prefer <code>suspendCancellableCoroutine</code> over <code>suspendCoroutine</code>.", type: "normal" },
+        { text: "Register <code>continuation.invokeOnCancellation { listener.unregister() }</code> to clean up system handles when cancelled.", type: "warning" },
+        { text: "Check <code>coroutineContext.ensureActive()</code> in tight CPU loops to ensure responsive cancellation.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-compose-stability",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "🎨",
+      title: "Class Stability & Smart Skipping Rules",
+      points: [
+        { text: "Standard interfaces like <code>List&lt;T&gt;</code> are treated as <strong>UNSTABLE</strong> by the Compose compiler.", type: "warning" },
+        { text: "Use kotlinx <code>ImmutableList&lt;T&gt;</code> or annotate data classes with <code>@Immutable</code> or <code>@Stable</code> to enable recomposition skipping.", type: "normal" },
+        { text: "Unstable lambdas recreate instances every recomposition; use method references or <code>remember(key) { { action() } }</code>.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-compose-phases",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "📐",
+      title: "The 3 Phases of Compose & Phase Skipping",
+      points: [
+        { text: "The 3 phases are: <strong>Composition</strong> (what to show) -> <strong>Layout</strong> (where to place) -> <strong>Drawing</strong> (how to render).", type: "normal" },
+        { text: "Defer state reads to Layout/Draw phases (e.g. <code>Modifier.offset { IntOffset(0, y) }</code>) to completely bypass composition.", type: "normal" },
+        { text: "Never read fast-changing states (e.g. scroll offsets) in the root body of a Composable function.", type: "danger" }
+      ]
+    },
+    {
+      id: "cheat-compose-derived-state",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "🧮",
+      title: "derivedStateOf Performance Rules",
+      points: [
+        { text: "Use <code>derivedStateOf</code> ONLY when input state updates frequently but the output changes much less often (e.g. <code>offset > 100</code>).", type: "normal" },
+        { text: "Do NOT wrap simple computations where output changes at the same rate as input (e.g. <code>remember { a + b }</code>); it adds useless overhead.", type: "warning" },
+        { text: "Always pass the inputs inside the derivedStateOf lambda so snapshot observation can register properly.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-compose-subcompose",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "🧩",
+      title: "SubcomposeLayout vs Standard Layout",
+      points: [
+        { text: "Standard <code>Layout</code> measures and places children in a single O(N) pass with zero re-composition overhead.", type: "normal" },
+        { text: "<code>SubcomposeLayout</code> defers sub-tree composition until measurement phase; necessary for Lazy lists but costly if overused.", type: "warning" },
+        { text: "For custom staggered or fluid layouts with static children, always prefer custom <code>Layout</code> over <code>SubcomposeLayout</code>.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-compose-composition-local",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "🌐",
+      title: "staticCompositionLocalOf vs compositionLocalOf",
+      points: [
+        { text: "<strong>compositionLocalOf:</strong> Tracks reads; only composables reading the value recompose when it updates.", type: "normal" },
+        { text: "<strong>staticCompositionLocalOf:</strong> Untracked; updating the value forces the ENTIRE provided subtree to recompose.", type: "warning" },
+        { text: "Use staticCompositionLocalOf for design system tokens (colors, shapes) that rarely mutate at runtime.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-compose-modifier-node",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "🔗",
+      title: "Modifier.Node Architecture (Replacing composed)",
+      points: [
+        { text: "<code>composed { ... }</code> allocates new Modifier chains on every recomposition, causing severe GC churn.", type: "danger" },
+        { text: "Use <strong>Modifier.Node</strong> (Compose 1.5+) to instantiate a persistent node updated in-place.", type: "normal" },
+        { text: "Implements <code>DrawModifierNode</code>, <code>LayoutModifierNode</code>, and <code>PointerInputModifierNode</code> with zero allocation overhead.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-compose-side-effects",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "🎯",
+      title: "Side-Effect Matrix: LaunchedEffect to DisposableEffect",
+      points: [
+        { text: "<strong>LaunchedEffect(key):</strong> Runs suspending coroutine when key changes; cancels and restarts on change.", type: "normal" },
+        { text: "<strong>DisposableEffect(key):</strong> Provides <code>onDispose { ... }</code> cleanup for listeners, receivers, and sensors.", type: "normal" },
+        { text: "<strong>SideEffect:</strong> Runs after every successful recomposition; used to publish state to external non-Compose objects.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-compose-lazy-optimizations",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "📜",
+      title: "LazyColumn & LazyRow Micro-Optimizations",
+      points: [
+        { text: "Always provide a unique, persistent <code>key = { item.id }</code> in <code>items()</code> to prevent state loss on reorder.", type: "normal" },
+        { text: "Provide <code>contentType = { item.type }</code> so Compose can recycle and reuse layout structures between matching items.", type: "normal" },
+        { text: "Avoid nested scrollable LazyColumns inside Column; use <code>LazyVerticalGrid</code> or multi-type item slots instead.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-compose-interop",
+      category: "compose",
+      categoryName: "Jetpack Compose",
+      icon: "🔄",
+      title: "Hybrid XML/Compose Interop & Lifecycle Disposal",
+      points: [
+        { text: "When adding <code>ComposeView</code> in XML, ALWAYS set <code>setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)</code>.", type: "danger" },
+        { text: "Without this strategy, ComposeView defaults to Disposing on Detach, which destroys state during RecyclerView recycling.", type: "warning" },
+        { text: "Use <code>AndroidView(factory = { ... }, update = { ... })</code> to embed legacy Views inside Compose.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-platform-fgs",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "📱",
+      title: "Android 14 & 15 Strict FGS Types",
+      points: [
+        { text: "Android 14+ mandates explicit <code>foregroundServiceType</code> in both AndroidManifest and in <code>startForeground()</code>.", type: "danger" },
+        { text: "<code>shortService</code> type enforces a hard 3-minute timeout; exceeding it triggers an immediate system crash.", type: "warning" },
+        { text: "Android 15 restricts launching background FGS from broadcast receivers or notifications.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-platform-16kb",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "💾",
+      title: "Android 15 16 KB Page Alignment",
+      points: [
+        { text: "Android 15 devices support 16 KB memory page sizes (up from 4 KB) to maximize memory throughput on modern silicon.", type: "normal" },
+        { text: "All native C/C++ <code>.so</code> libraries must align ELF load segments to 16 KB (NDK r27+ <code>-Wl,-z,max-page-size=16384</code>).", type: "danger" },
+        { text: "Un-aligned native shared libraries will crash immediately upon process launch on 16 KB kernels.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-platform-binder",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "📦",
+      title: "Binder 1MB Buffer & TransactionTooLargeException",
+      points: [
+        { text: "The Android Binder IPC transaction buffer has an aggregate <strong>1MB limit</strong> shared across ALL ongoing IPCs for the process.", type: "danger" },
+        { text: "Never pass large bitmaps or 1000+ item lists through <code>Intent</code> or <code>SavedStateHandle</code>.", type: "warning" },
+        { text: "Persist large datasets in Room SQLite or disk cache and pass only lightweight unique IDs across IPC.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-platform-art",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "⚡",
+      title: "ART Compilation, Baseline Profiles & Cloud DEX",
+      points: [
+        { text: "Android ART uses hybrid JIT (Just-In-Time) and AOT (Ahead-Of-Time) profile-guided compilation.", type: "normal" },
+        { text: "<strong>Baseline Profiles</strong> specify startup and critical scroll paths so Google Play compiles them to native code at install time.", type: "normal" },
+        { text: "Improves cold start latency by up to 40% and eliminates initial scroll frame drops.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-platform-process-death",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "💀",
+      title: "Process Death vs Config Change vs SavedStateHandle",
+      points: [
+        { text: "Configuration changes (rotation) retain ViewModel instances in memory; <strong>Process Death kills the entire VM heap</strong>.", type: "danger" },
+        { text: "Inject <code>SavedStateHandle</code> into ViewModels to automatically retain and restore critical UI state across process death.", type: "normal" },
+        { text: "Test process death via ADB: <code>adb shell am kill <package_name></code>.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-platform-memory-arch",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "🧠",
+      title: "Dalvik Heap vs Native Heap vs Graphics Memory",
+      points: [
+        { text: "Android RAM comprises Dalvik/ART Heap, Native Heap (C++), Graphics (OpenGL/Vulkan), and Ashmem (shared memory).", type: "normal" },
+        { text: "<code>OutOfMemoryError</code> can happen even if Dalvik heap is 50% empty if Native memory or virtual address space is exhausted.", type: "warning" },
+        { text: "Listen to <code>ComponentCallbacks2.onTrimMemory(level)</code> and evict caches during <code>TRIM_MEMORY_RUNNING_CRITICAL</code>.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-platform-choreographer",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "⏱️",
+      title: "Choreographer, SurfaceFlinger & VSYNC Timing",
+      points: [
+        { text: "Choreographer coordinates Frame Input, Animation, and Traversal in lockstep with hardware VSYNC pulses (16.6ms / 8.3ms).", type: "normal" },
+        { text: "Any main thread stall exceeding the VSYNC window causes a dropped frame (jank).", type: "warning" },
+        { text: "<strong>SurfaceView</strong> composites directly to SurfaceFlinger, saving GPU bandwidth over <strong>TextureView</strong>.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-platform-doze",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "🔋",
+      title: "Doze Mode, App Standby Buckets & Battery",
+      points: [
+        { text: "Doze mode suspends CPU and network access when the device is stationary and unplugged.", type: "normal" },
+        { text: "Maintenance windows periodically grant brief windows to sync; use <strong>WorkManager</strong> for guaranteed deferred execution.", type: "normal" },
+        { text: "High-priority FCM messages wake apps from Doze for real-time notifications.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-platform-predictive-back",
+      category: "platform",
+      categoryName: "Android Platform & OS",
+      icon: "🔙",
+      title: "Predictive Back Gesture Navigation (Android 14+)",
+      points: [
+        { text: "Requires <code>android:enableOnBackInvokedCallback=\"true\"</code> in AndroidManifest.xml.", type: "normal" },
+        { text: "Migrate from legacy <code>onBackPressed()</code> to <code>OnBackInvokedDispatcher</code> or Compose <code>BackHandler</code>.", type: "normal" },
+        { text: "Enables preview animations showing the home screen or previous destination before the user completes the gesture.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-arch-framework",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "🏛️",
+      title: "Mobile System Design Framework (Staff Guide)",
+      points: [
+        { text: "Always clarify <strong>Functional vs Non-Functional Requirements</strong>: DAU, peak QPS, offline mutations, battery limits, p99 latency.", type: "normal" },
+        { text: "<strong>Client Single Source of Truth:</strong> UI solely observes Room Flow. Mutating actions write to SQLite before network sync.", type: "normal" },
+        { text: "Structure presentation into clear UDF (Unidirectional Data Flow): <code>StateFlow<UiState></code> and <code>onEvent(UiEvent)</code>.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-arch-offline-sync",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "📡",
+      title: "Offline-First Sync & Conflict Resolution",
+      points: [
+        { text: "<strong>Optimistic UI:</strong> Update local SQLite database immediately with 'SYNCING' badge; emit to Compose instantly.", type: "normal" },
+        { text: "<strong>Mutation Queue:</strong> Append actions to a persistent SQLite outbox table with unique UUID idempotency keys.", type: "normal" },
+        { text: "<strong>Conflict Resolution:</strong> Last-Write-Wins (LWW) with client-server timestamping, CRDTs, or server-authoritative delta rollbacks.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-arch-modular",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "📦",
+      title: "Multi-Module Architecture & Feature Splitting",
+      points: [
+        { text: "Split features into <code>:feature:name-api</code> (contracts/interfaces) and <code>:feature:name-impl</code> to eliminate circular dependencies.", type: "normal" },
+        { text: "Features never depend on each other directly; they communicate via abstract interfaces registered in core navigation/DI.", type: "normal" },
+        { text: "Significantly accelerates parallel Gradle builds and enables independent feature ownership across squads.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-arch-dynamic-delivery",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "🚀",
+      title: "Play Feature Delivery & Dynamic Feature Modules",
+      points: [
+        { text: "Extract heavy or secondary features (e.g. document scanner, video editor) into <strong>Dynamic Feature Modules (DFMs)</strong>.", type: "normal" },
+        { text: "Download modules on-demand over-the-air using <code>SplitInstallManager</code> to keep base APK download size under 25MB.", type: "normal" },
+        { text: "Isolate DFMs with crash circuit breakers so a module failure does not crash the host super-app.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-arch-paging3",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "📄",
+      title: "Paging 3 Architecture & RemoteMediator",
+      points: [
+        { text: "UI observes <code>Flow<PagingData></code> from Room DAO; RemoteMediator fetches remote pages when local cache runs dry.", type: "normal" },
+        { text: "Perform database writes inside <code>database.withTransaction { ... }</code> to ensure articles and remote keys are saved atomically.", type: "normal" },
+        { text: "Cache paging streams using <code>.cachedIn(viewModelScope)</code> to survive configuration changes without refetching.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-arch-websocket",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "🔌",
+      title: "Real-Time WebSocket Engine & Jittered Reconnect",
+      points: [
+        { text: "Queue outgoing messages in Kotlin <code>Channel<T>(Channel.BUFFERED)</code> to decouple UI threads from socket transport latency.", type: "normal" },
+        { text: "Implement exponential backoff with randomized jitter (0-500ms) to avoid server thundering herds during network recovery.", type: "warning" },
+        { text: "Maintain an active 15s application-level PING/PONG watchdog to detect half-open TCP cell tower drops.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-arch-circuit-breaker",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "⚡",
+      title: "Circuit Breakers & Graceful Degradation",
+      points: [
+        { text: "If backend returns repeated 5xx errors, transition circuit breaker from <strong>CLOSED</strong> to <strong>OPEN</strong>.", type: "normal" },
+        { text: "In OPEN state, fail fast without issuing network requests, serving cached data or optimistic mocks.", type: "normal" },
+        { text: "After timeout, enter <strong>HALF-OPEN</strong> to probe server recovery before fully restoring live network requests.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-arch-kmp-mvi",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "🌐",
+      title: "Kotlin Multiplatform (KMP) Unidirectional MVI",
+      points: [
+        { text: "Share business logic, network client (Ktor), and database (SQLDelight/Room KMP) across Android and iOS.", type: "normal" },
+        { text: "Expose single state stream: <code>val state: StateFlow<ViewState></code> consumed by Compose on Android and SwiftUI on iOS.", type: "normal" },
+        { text: "Zero runtime overhead; compiles to native machine code on iOS and JVM bytecode on Android.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-arch-di-subgraphs",
+      category: "architecture",
+      categoryName: "Architecture & Design",
+      icon: "💉",
+      title: "Dagger/Hilt Subcomponent Lifecycles",
+      points: [
+        { text: "SingletonComponent holds application-wide dependencies (OkHttpClient, Database, KeyStore).", type: "normal" },
+        { text: "Feature subcomponents create feature-scoped scopes disposed immediately when the user exits the feature.", type: "normal" },
+        { text: "Use <code>@AssistedInject</code> for factory-created classes requiring runtime IDs alongside Dagger singletons.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-perf-wal",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "💽",
+      title: "SQLite Room Write-Ahead Logging (WAL)",
+      points: [
+        { text: "Enable WAL mode: <code>setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)</code> to allow readers and writers to operate concurrently.", type: "normal" },
+        { text: "Batch high-frequency inserts in a single <code>withTransaction { ... }</code> to trigger exactly ONE disk fsync instead of 50.", type: "normal" },
+        { text: "Boosts database ingestion throughput by over 40x without dropping UI frames.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-perf-bitmap-cache",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "🖼️",
+      title: "Memory-Conscious LRU Bitmap Caching",
+      points: [
+        { text: "Calculate cache capacity based on available heap: <code>Runtime.getRuntime().maxMemory() / 8</code>.", type: "normal" },
+        { text: "Measure entries by byte size: <code>override fun sizeOf(k, v) = v.allocationByteCount</code>, not mere item count.", type: "normal" },
+        { text: "Use <code>BitmapFactory.Options.inBitmap</code> with a BitmapPool to reuse existing byte buffers and eliminate JVM GC pauses.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-perf-leakcanary",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "🐤",
+      title: "LeakCanary & Memory Leak Triage",
+      points: [
+        { text: "LeakCanary monitors object lifecycles using <code>WeakReference</code> and <code>ReferenceQueue</code>.", type: "normal" },
+        { text: "Common culprits: Static views, uncancelled coroutines holding ViewModel references, unregistering BroadcastReceivers.", type: "danger" },
+        { text: "Inspect GC root paths in Heap Dumps: prioritize shortest path to instance with largest retained size.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-perf-macrobenchmark",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "📊",
+      title: "App Startup Profiling & Macrobenchmark",
+      points: [
+        { text: "Measure <strong>Time To Initial Display (TTID)</strong> and <strong>Time To Full Display (TTFD)</strong> using Macrobenchmark.", type: "normal" },
+        { text: "Profile with <strong>Perfetto</strong> system tracing to detect binder call stalls and choreographer frame jank.", type: "normal" },
+        { text: "Defer non-critical SDK initializations (Firebase, analytics) using <strong>Jetpack App Startup</strong> or coroutine dispatchers.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-perf-r8-fullmode",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "✂️",
+      title: "R8 Full Mode & ProGuard Reflection Traps",
+      points: [
+        { text: "R8 full mode aggressively inlines methods, merges classes, and strips unreferenced field names.", type: "normal" },
+        { text: "Reflection-based JSON parsers (Moshi/Gson) fail unless models are annotated with <code>@Keep</code> or configured in ProGuard rules.", type: "danger" },
+        { text: "Always verify release APK DEX size and mapping files (<code>mapping.txt</code>) to ensure proper obfuscation.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-perf-sqlite-indexing",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "🔍",
+      title: "Room SQLite Indexing & Query Optimization",
+      points: [
+        { text: "Add indices to foreign keys and WHERE clause columns: <code>@Entity(indices = [Index(value = ['userId'])])</code>.", type: "normal" },
+        { text: "Without indices, SQLite executes full table scans (O(N)), causing severe frame drops on tables with 10k+ rows.", type: "warning" },
+        { text: "Use <code>EXPLAIN QUERY PLAN</code> in Android Studio Database Inspector to detect un-indexed queries.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-perf-network-caching",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "🌐",
+      title: "HTTP Caching & ETag Conditional Requests",
+      points: [
+        { text: "Configure OkHttp <code>Cache(cacheDir, 50L * 1024 * 1024)</code> (50MB) for automatic RFC-compliant caching.", type: "normal" },
+        { text: "Support <strong>ETag / If-None-Match</strong> headers: server returns <code>304 Not Modified</code> with zero payload bytes.", type: "normal" },
+        { text: "Drastically cuts cellular data consumption, battery drain, and screen load latency.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-perf-gradle-cache",
+      category: "performance",
+      categoryName: "Performance & Storage",
+      icon: "⚡",
+      title: "Gradle Build & Configuration Cache Optimization",
+      points: [
+        { text: "Enable <code>org.gradle.configuration-cache=true</code> to skip build script evaluation on subsequent builds.", type: "normal" },
+        { text: "Enable <code>org.gradle.caching=true</code> to reuse task outputs across branches and clean checkouts.", type: "normal" },
+        { text: "Avoid custom task inputs reading dynamic system time or git hashes to keep tasks cacheable.", type: "warning" }
+      ]
+    },
+    {
+      id: "cheat-sec-keystore",
+      category: "security",
+      categoryName: "Security & Crypto",
+      icon: "🛡️",
+      title: "Android KeyStore & StrongBox Keymaster",
+      points: [
+        { text: "Generate AES-256-GCM keys directly inside <strong>AndroidKeyStore</strong>; private keys can NEVER be exported or read by software.", type: "normal" },
+        { text: "Enable <code>setIsStrongBoxBacked(true)</code> to store keys on physically isolated tamper-resistant hardware chips.", type: "normal" },
+        { text: "Never hardcode cryptographic salts, secrets, or API keys in source code or BuildConfig.", type: "danger" }
+      ]
+    },
+    {
+      id: "cheat-sec-biometric",
+      category: "security",
+      categoryName: "Security & Crypto",
+      icon: "👆",
+      title: "BiometricPrompt with Hardware CryptoObject",
+      points: [
+        { text: "Never rely on a simple boolean success callback from BiometricPrompt for financial transactions.", type: "danger" },
+        { text: "Generate a KeyStore cipher with <code>setUserAuthenticationRequired(true)</code> and pass it inside <code>BiometricPrompt.CryptoObject(cipher)</code>.", type: "normal" },
+        { text: "The cipher is only unlocked by the secure hardware chip when the user presents a valid fingerprint or face.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-sec-cert-pinning",
+      category: "security",
+      categoryName: "Security & Crypto",
+      icon: "📌",
+      title: "Certificate Pinning & Network Security Config",
+      points: [
+        { text: "Declare public key pin sets in <code>res/xml/network_security_config.xml</code> with SHA-256 SPKI hashes.", type: "normal" },
+        { text: "Always configure a backup pin for certificate authority rotations to prevent catastrophic app bricking.", type: "warning" },
+        { text: "Prevents Man-In-The-Middle (MITM) attacks even if a user installs a malicious root certificate on their device.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-sec-app-links",
+      category: "security",
+      categoryName: "Security & Crypto",
+      icon: "🔗",
+      title: "Android App Links vs Custom URI Schemes",
+      points: [
+        { text: "Custom schemes (e.g. <code>myapp://pay</code>) can be hijacked by any malicious app on the device.", type: "danger" },
+        { text: "<strong>Android App Links</strong> require cryptographic verification via <code>assetlinks.json</code> hosted on your HTTPS domain.", type: "normal" },
+        { text: "Android verifies the domain signature and routes deep links directly to your app without disambiguation dialogs.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-sec-db-encryption",
+      category: "security",
+      categoryName: "Security & Crypto",
+      icon: "🔐",
+      title: "SQLCipher Room Encryption & Passphrase Security",
+      points: [
+        { text: "Encrypt Room SQLite databases using <strong>SQLCipher</strong> (256-bit AES encryption of all database pages).", type: "normal" },
+        { text: "Derive the database encryption passphrase dynamically using Android KeyStore rather than hardcoding.", type: "warning" },
+        { text: "Protects user data against forensic extraction from device NAND flash or root access.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-sec-anti-tamper",
+      category: "security",
+      categoryName: "Security & Crypto",
+      icon: "🕵️",
+      title: "Root Detection & Play Integrity API",
+      points: [
+        { text: "Check for common root binaries (<code>/system/bin/su</code>), test-keys build tags, and Magisk socket hooks.", type: "normal" },
+        { text: "Use Google's <strong>Play Integrity API</strong> for server-side cryptographic attestation of app and device genuineness.", type: "normal" },
+        { text: "Detects whether the app is running on an emulator, has been modified/repackaged, or is running on a compromised device.", type: "normal" }
+      ]
+    },
+    {
+      id: "cheat-sec-exported-ipc",
+      category: "security",
+      categoryName: "Security & Crypto",
+      icon: "🚪",
+      title: "Android Component Export Security & Intent Spoofing",
+      points: [
+        { text: "Explicitly set <code>android:exported=\"false\"</code> on all Activities, Services, and Receivers not meant for external apps.", type: "danger" },
+        { text: "For exported components, protect them with custom signature-level permissions: <code>android:protectionLevel=\"signature\"</code>.", type: "normal" },
+        { text: "Always sanitize incoming Intent extras using try-catch blocks to prevent intent redirection and injection attacks.", type: "warning" }
+      ]
+    }
+  ],
+
   quizQuestions: [
     {
       id: "q1",
@@ -2410,6 +3013,415 @@ class HighThroughputEventBatcher(
       ],
       correctIndex: 1,
       explanation: "Standard 'Layout' composes all children upfront and measures them in a single O(N) pass. 'SubcomposeLayout' allows composing children dynamically during the measurement pass (necessary for Lazy lists to only compose visible items), but this introduces re-entrancy into the composition runtime and incurs measurable CPU overhead if misused for static layouts."
+    }
+  ,
+    {
+      id: "q17",
+      question: "In Jetpack Compose, what is the crucial performance difference between 'CompositionLocal' created via 'staticCompositionLocalOf' versus 'compositionLocalOf'?",
+      options: [
+        "staticCompositionLocalOf only works in static Java methods.",
+        "compositionLocalOf causes all reading composables to recompose when changed, whereas staticCompositionLocalOf invalidates the entire sub-tree content lambda from the provider down.",
+        "staticCompositionLocalOf requires hardware acceleration.",
+        "There is no difference in runtime behavior or recomposition scope."
+      ],
+      correctIndex: 1,
+      explanation: "With compositionLocalOf, Compose tracks reads and only recomposes the exact composables that read the value. With staticCompositionLocalOf, reads are NOT tracked; when the provided value changes, the ENTIRE sub-tree provided by CompositionLocalProvider must be recomposed. Use staticCompositionLocalOf for values that rarely or never change (e.g. Design System colors/typography) to save tracking overhead."
+    },
+    {
+      id: "q18",
+      question: "What is the primary architectural purpose of using 'supervisorScope' instead of 'coroutineScope' in a Kotlin Coroutines suspend function?",
+      options: [
+        "supervisorScope forces coroutines to run exclusively on the Main thread.",
+        "supervisorScope creates an independent failure boundary where an exception in one child does not cancel the parent or siblings.",
+        "supervisorScope prevents all memory leaks automatically.",
+        "supervisorScope prevents coroutines from being cancelled by timeouts."
+      ],
+      correctIndex: 1,
+      explanation: "coroutineScope creates a standard Job scope where a failure in any child immediately cancels the scope and all other children. supervisorScope uses a SupervisorJob, ensuring that an uncaught exception in one child is contained, allowing siblings and the parent to continue execution uninterrupted."
+    },
+    {
+      id: "q19",
+      question: "In Kotlin, why should high-frequency Value Objects (such as UserId, Milliseconds, or CurrencyAmount) be declared as '@JvmInline value class'?",
+      options: [
+        "Inline value classes run on native C++ memory without JVM garbage collection.",
+        "The Kotlin compiler unboxes the wrapper at runtime to its underlying primitive type, eliminating object allocation overhead and reducing GC pressure.",
+        "Inline value classes can have multiple mutable fields.",
+        "Value classes can be extended by other classes."
+      ],
+      correctIndex: 1,
+      explanation: "@JvmInline value classes provide type safety at compile time without runtime heap allocation. When not boxed (e.g. not passed as an interface or generic type), the compiler replaces instances with the underlying primitive or reference directly in bytecode."
+    },
+    {
+      id: "q20",
+      question: "What happens if you use 'rememberCoroutineScope()' inside an Android Jetpack Compose composable to launch a long-running data fetch?",
+      options: [
+        "The coroutine will continue running even after the user closes the app.",
+        "The coroutine is bound to the composition lifecycle and is automatically cancelled when the calling composable leaves the composition.",
+        "rememberCoroutineScope() triggers an immediate ANR if network is slow.",
+        "Compose will crash because coroutines cannot be launched in composables."
+      ],
+      correctIndex: 1,
+      explanation: "rememberCoroutineScope() creates a CoroutineScope bound to the point in the composition where it is called. When that composable leaves the composition (e.g. screen navigation or conditional UI removal), the scope and all active jobs are automatically cancelled."
+    },
+    {
+      id: "q21",
+      question: "Why does Jetpack Compose provide the 'Modifier.Node' API as the recommended replacement for 'composed { ... }' in modern Android development?",
+      options: [
+        "Modifier.Node compiles directly to OpenGL shaders.",
+        "composed { ... } creates separate Composable state allocations on every recomposition, causing severe memory allocation churn, whereas Modifier.Node instances are created once and updated in-place.",
+        "composed { ... } is not compatible with Android 14.",
+        "Modifier.Node disables recomposition entirely."
+      ],
+      correctIndex: 1,
+      explanation: "composed { ... } runs during the composition phase and allocates new modifier instances whenever the caller recomposes, creating significant garbage collection overhead. Modifier.Node creates a persistent node instance that receives lifecycle callbacks and direct phase updates without re-allocating modifier chains."
+    },
+    {
+      id: "q22",
+      question: "In Kotlin Coroutines, what happens when 'flowOn(Dispatchers.IO)' is called in a Flow pipeline?",
+      options: [
+        "It switches all downstream collectors to Dispatchers.IO.",
+        "It only changes the execution context of the UPSTREAM producers and intermediate operators before the flowOn call, preserving downstream context preservation.",
+        "It throws an IllegalStateException if called inside a ViewModel.",
+        "It blocks the current OS thread until the Flow finishes."
+      ],
+      correctIndex: 1,
+      explanation: "Flow obeys the 'context preservation' principle: downstream collection context is determined by the collector (e.g. viewModelScope). flowOn(Dispatchers.IO) switches only the upstream emission and transformations above it, leaving downstream collection on its original dispatcher."
+    },
+    {
+      id: "q23",
+      question: "In Android 14 (API 34+), how does the Photo Picker differ from the legacy READ_EXTERNAL_STORAGE or READ_MEDIA_IMAGES permission?",
+      options: [
+        "The Photo Picker requires root access on the user device.",
+        "The Photo Picker provides a system-mediated UI where users select specific photos/videos, granting the app temporary URI read access without granting broad access to all device media.",
+        "The Photo Picker only allows reading photos stored on Google Drive.",
+        "The Photo Picker requires the app to declare FOREGROUND_SERVICE_MEDIA_PROCESSING."
+      ],
+      correctIndex: 1,
+      explanation: "Android's Photo Picker (and Android 14's Selected Photos Access) allows users to grant access to individual photos or videos without exposing their entire media library, eliminating the need for broad storage permissions and enhancing privacy compliance."
+    },
+    {
+      id: "q24",
+      question: "Why should Android engineers prefer 'repeatOnLifecycle(Lifecycle.State.STARTED)' over 'launchWhenStarted' when collecting UI flows in Activities or Fragments?",
+      options: [
+        "launchWhenStarted throws an exception on Android 12+.",
+        "launchWhenStarted merely suspends collection when the app goes into the background, keeping the upstream flow producer active and leaking resources; repeatOnLifecycle cancels and restarts the coroutine cleanly.",
+        "repeatOnLifecycle runs on a background daemon thread.",
+        "launchWhenStarted does not support StateFlow."
+      ],
+      correctIndex: 1,
+      explanation: "launchWhenStarted pauses collection when the lifecycle falls below STARTED, but DOES NOT cancel the underlying coroutine, meaning upstream cold flows (e.g. location updates, camera frames) continue emitting. repeatOnLifecycle cancels the coroutine when STOPPED and re-launches when STARTED, preventing battery drain and background memory leaks."
+    },
+    {
+      id: "q25",
+      question: "What is the primary advantage of Android's 'SavedStateHandle' over traditional 'onSaveInstanceState(Bundle)' in MVVM architecture?",
+      options: [
+        "SavedStateHandle writes state directly to an encrypted cloud server.",
+        "SavedStateHandle is directly injected into the ViewModel constructor, enabling seamless restoration across system-initiated process death without coupling state management to Activity/Fragment view lifecycles.",
+        "SavedStateHandle can store up to 500 MB of in-memory data.",
+        "SavedStateHandle bypasses all Android OS process kill mechanisms."
+      ],
+      correctIndex: 1,
+      explanation: "SavedStateHandle is integrated into the ViewModel Lifecycle library, allowing the ViewModel to manage and restore state across system-initiated process death directly without requiring boilerplate in the UI controller or holding references to Activity bundles."
+    },
+    {
+      id: "q26",
+      question: "In Jetpack Compose, what is the role of 'derivedStateOf' and when should it be avoided?",
+      options: [
+        "It should be used for every simple computation, like 'remember { a + b }'.",
+        "It should be used when an input state changes frequently (e.g. scroll position) but the output calculation changes much less frequently (e.g. showButton > 100); it should be avoided if inputs change at the same rate as outputs.",
+        "It should only be used in C++ JNI calls.",
+        "It replaces Kotlin Coroutines Mutex in Compose UI."
+      ],
+      correctIndex: 1,
+      explanation: "derivedStateOf introduces an internal snapshot calculation node. If the result changes every single time the input changes, derivedStateOf adds unnecessary overhead with zero recomposition savings. It shines only when the output changes significantly less often than the fast-firing inputs."
+    },
+    {
+      id: "q27",
+      question: "How does Android's Low Memory Killer Daemon (LMKD) determine which background application process to terminate first when RAM is exhausted?",
+      options: [
+        "It terminates processes randomly using a dice-roll algorithm.",
+        "It evaluates each process's 'oom_adj_score' (ranging from -1000 for system processes to 1000 for cached background apps), terminating the highest score (least critical) processes first.",
+        "It terminates whichever app has the largest APK file size.",
+        "It kills apps that have been running for more than 24 hours."
+      ],
+      correctIndex: 1,
+      explanation: "LMKD relies on oom_score_adj. Foreground processes have very low scores (e.g. 0), while cached background apps without running services receive scores up to 900-1000. Under memory pressure, LMKD terminates processes starting with the highest oom_score_adj."
+    },
+    {
+      id: "q28",
+      question: "What is the key difference between Kotlin 'Sequence' and standard 'List' operations (e.g. filter, map)?",
+      options: [
+        "Sequences evaluate elements lazily one-by-one through the entire pipeline, avoiding intermediate collection allocations, whereas List operations create new intermediate ArrayLists at every step.",
+        "Sequences can only hold numeric integers.",
+        "Sequences run in parallel across all CPU cores automatically.",
+        "Lists are always immutable, whereas Sequences are always mutable."
+      ],
+      correctIndex: 0,
+      explanation: "Standard List operations (like list.filter {}.map {}) create a new intermediate collection at each transformation stage. Sequences evaluate elements lazily on demand, executing all operations for one element before moving to the next, which drastically reduces heap allocations for large datasets."
+    },
+    {
+      id: "q29",
+      question: "What is the consequence of declaring a Kotlin property with 'by lazy(LazyThreadSafetyMode.NONE)'?",
+      options: [
+        "The property cannot be accessed on the main thread.",
+        "It removes thread synchronization locks, meaning concurrent access from multiple threads can cause the initializer to run multiple times or return an inconsistent instance.",
+        "The property is garbage collected after its first read.",
+        "It throws an UnsupportedOperationException if initialized after 5 seconds."
+      ],
+      correctIndex: 1,
+      explanation: "By default, lazy uses LazyThreadSafetyMode.SYNCHRONIZED (using a lock to guarantee single initialization across threads). LazyThreadSafetyMode.NONE omits thread safety locks, offering micro-optimizations for properties known to be accessed strictly from a single thread (such as Android Main thread)."
+    },
+    {
+      id: "q30",
+      question: "In Jetpack Compose, why must you supply a stable 'key' parameter to items inside a LazyColumn or LazyRow?",
+      options: [
+        "Without keys, items cannot have click listeners.",
+        "The key allows Compose to identify and match items across recompositions when items are reordered, inserted, or deleted, preventing entire item subtrees from resetting their internal state or recomposing unnecessarily.",
+        "Keys are required by Android OS accessibility services.",
+        "Keys automatically encrypt the item content in Room database."
+      ],
+      correctIndex: 1,
+      explanation: "Without explicit keys, LazyColumn uses item position (0, 1, 2...) as identity. If an item is prepended or reordered, positions shift, causing Compose to lose item-internal state (e.g. scroll state or text inputs) and trigger unnecessary recompositions for every subsequent item."
+    },
+    {
+      id: "q31",
+      question: "What is the primary architectural benefit of Kotlin Multiplatform (KMP) over cross-platform hybrid frameworks like Flutter or React Native?",
+      options: [
+        "KMP converts all Kotlin code directly into JavaScript in the browser.",
+        "KMP shares business logic, data models, and networking while preserving 100% native UI rendering, full platform hardware access, and zero runtime bridge overhead.",
+        "KMP eliminates the need for Android Studio or Xcode.",
+        "KMP does not require writing unit tests."
+      ],
+      correctIndex: 1,
+      explanation: "KMP compiles to native JVM bytecode on Android and native Mach-O machine code on iOS. It shares business logic, domain layers, and networking while allowing teams to build 100% native UI (Jetpack Compose on Android, SwiftUI on iOS) without runtime webview or C++ rendering bridges."
+    },
+    {
+      id: "q32",
+      question: "In Gradle build optimization, what is the 'Configuration Cache' and how does it speed up Android builds?",
+      options: [
+        "It compresses all PNG and WebP images in the APK.",
+        "It caches the result of the Gradle build configuration phase and reuses it across builds, executing tasks immediately and skipping the evaluation of build.gradle files when inputs haven't changed.",
+        "It stores built APKs on a remote AWS S3 bucket.",
+        "It disables all unit test tasks automatically."
+      ],
+      correctIndex: 1,
+      explanation: "The Configuration Cache records the task execution graph during the configuration phase. On subsequent builds, Gradle skips running configuration logic across build scripts and plugins entirely, jumping directly to task execution and cutting up to 80% off incremental build times."
+    },
+    {
+      id: "q33",
+      question: "What is the 'Double-Checked Locking' anti-pattern in Java/Kotlin singleton patterns, and why is the '@Volatile' keyword required in Java?",
+      options: [
+        "Without @Volatile, the JVM CPU cache and instruction reordering can allow a second thread to read a partially initialized instance of the singleton.",
+        "@Volatile encrypts the singleton instance in device RAM.",
+        "@Volatile ensures the singleton is recreated on every call.",
+        "Double-checked locking was deprecated in Android 5.0."
+      ],
+      correctIndex: 0,
+      explanation: "During object instantiation, the JVM can reorder memory writes (allocating memory -> assigning reference -> calling constructor). Without @Volatile, thread B might observe a non-null reference before thread A completes constructor execution. In Kotlin, 'object' declarations handle this safely under the hood."
+    },
+    {
+      id: "q34",
+      question: "How does Dagger/Hilt 'Assisted Injection' (@AssistedInject) solve the problem of injecting parameters that are only known at runtime?",
+      options: [
+        "It uses reflection to find variables in the Android Activity stack.",
+        "It generates a factory interface where Dagger supplies compile-time dependencies (e.g. Repositories) while the caller manually supplies runtime parameters (e.g. dynamic IDs or SavedStateHandle).",
+        "It downloads dependency instances from a remote server.",
+        "It converts all constructors to Kotlin secondary constructors."
+      ],
+      correctIndex: 1,
+      explanation: "Assisted Injection combines Dagger-managed dependencies with runtime parameters. Dagger generates a factory implementation where injected singletons are wired automatically, while parameters annotated with @Assisted are passed explicitly by the caller when instantiating the object."
+    },
+    {
+      id: "q35",
+      question: "In Android Network Security, what is Certificate Transparency (CT) and how does it protect mobile applications?",
+      options: [
+        "It displays the server SSL certificate as a visible watermark in the app UI.",
+        "It requires all public SSL/TLS certificates to be recorded in publicly auditable append-only cryptographic logs, preventing rogue or compromised Certificate Authorities (CAs) from issuing fraudulent certificates undetected.",
+        "It forces all network traffic to be transmitted unencrypted for debugging.",
+        "It allows Android apps to bypass HTTPS entirely."
+      ],
+      correctIndex: 1,
+      explanation: "Certificate Transparency enforces that CA-issued SSL certificates are logged in public verifiable logs (SCTs - Signed Certificate Timestamps). Mobile clients verifying CT can detect if a compromised CA has issued a fraudulent certificate for their domain, mitigating Man-In-The-Middle attacks."
+    },
+    {
+      id: "q36",
+      question: "Why is 'runBlocking' considered a dangerous anti-pattern on the Android Main thread?",
+      options: [
+        "runBlocking crashes the device kernel immediately.",
+        "It blocks the calling thread until all child coroutines finish; calling it on the Main thread stops the Android Choreographer from processing frame renders and touch events, causing immediate UI freezing and ANRs.",
+        "runBlocking cannot launch coroutines.",
+        "runBlocking forces all code to run on a remote server."
+      ],
+      correctIndex: 1,
+      explanation: "runBlocking bridges regular blocking code to suspending code by parking the current thread. When executed on the Main thread, it halts the event looper, preventing layout passes, input dispatch, and 60/120 FPS rendering, directly causing Application Not Responding (ANR) crashes."
+    },
+    {
+      id: "q37",
+      question: "What is the purpose of 'Baseline Profiles' in Android Jetpack, and how do they eliminate JIT compilation stutter?",
+      options: [
+        "They downscale high-resolution images to match screen DPI.",
+        "They generate rules that specify critical user journey classes and methods (e.g. startup, home feed scroll), allowing the Google Play Store and ART to compile them into native machine code ahead-of-time (AOT) upon app installation.",
+        "They set minimum hardware requirements for devices on Google Play.",
+        "They replace Kotlin with pure Assembly code."
+      ],
+      correctIndex: 1,
+      explanation: "Android ART utilizes a hybrid JIT/AOT model. Baseline Profiles guide ART during app installation or background idle maintenance to pre-compile hot paths into optimized AOT machine code, eliminating runtime interpretation latency and improving cold start speeds by up to 30-40%."
+    },
+    {
+      id: "q38",
+      question: "How does Kotlin's 'suspendCancellableCoroutine' differ from 'suspendCoroutine' when wrapping legacy callback-based APIs?",
+      options: [
+        "suspendCancellableCoroutine supports timeout cancellation and invokes 'invokeOnCancellation' to cleanly unregister listeners or cancel underlying tasks if the calling coroutine job is cancelled.",
+        "suspendCancellableCoroutine does not support Kotlin Coroutines.",
+        "suspendCoroutine runs on the GPU, whereas suspendCancellableCoroutine runs on the CPU.",
+        "There is no difference; they are interchangeable aliases."
+      ],
+      correctIndex: 0,
+      explanation: "suspendCancellableCoroutine provides a CancellableContinuation. If the calling coroutine scope is cancelled while suspended, it actively triggers continuation.invokeOnCancellation { ... }, allowing developers to unbind listeners, close sockets, or cancel background tasks to prevent memory leaks."
+    },
+    {
+      id: "q39",
+      question: "What is the purpose of Android's 'StrictMode' tool in debugging builds?",
+      options: [
+        "It forces developers to write all code in Java instead of Kotlin.",
+        "It detects accidental disk I/O, network operations, or SQLite queries executed on the Main thread, and identifies leaked Closable resources or unclosed database cursors.",
+        "It encrypts all network packets sent over HTTP.",
+        "It enforces 100% unit test code coverage before building."
+      ],
+      correctIndex: 1,
+      explanation: "StrictMode is a developer tool that catches accidental policy violations, such as disk reads/writes or network requests executed on the UI Main thread, as well as leaked SQLite cursors and unclosed streams, flashing the screen or logging stack traces to help eliminate frame drops."
+    },
+    {
+      id: "q40",
+      question: "In Jetpack Compose, how does 'produceState' bridge non-Compose asynchronous data streams into Compose State?",
+      options: [
+        "It compiles Flow emissions into XML resource files.",
+        "It launches a coroutine scoped to the Composition that can collect asynchronous sources (such as Flow, callbacks, or suspend calls) and assigns values to an internal MutableState.",
+        "It deletes all old states when memory is low.",
+        "It converts Compose states into RxJava Observables."
+      ],
+      correctIndex: 1,
+      explanation: "produceState launches a coroutine that produces Compose State from non-Compose sources. It is automatically cancelled when it leaves the composition and receives a ProducerScope to set 'value', making it a clean pattern for converting asynchronous streams into reactive Compose state."
+    },
+    {
+      id: "q41",
+      question: "What is the primary vulnerability prevented by setting 'android:exported="false"' on Activities, Services, and BroadcastReceivers in the AndroidManifest?",
+      options: [
+        "It prevents the app from being uninstalled by the user.",
+        "It prevents unauthorized external third-party applications on the device from directly launching, binding to, or sending spoofed intent broadcasts to private internal app components.",
+        "It disables Google Play Protect scans.",
+        "It prevents the app from using cellular data."
+      ],
+      correctIndex: 1,
+      explanation: "Exported components can be invoked by ANY external app on the device. Setting exported='false' restricts component invocation exclusively to the host application or applications sharing the exact same Linux User ID (UID), shutting down unauthorized IPC and privilege escalation vulnerabilities."
+    },
+    {
+      id: "q42",
+      question: "What is the function of the 'Choreographer' subsystem in the Android UI rendering pipeline?",
+      options: [
+        "It monitors battery temperature and throttles CPU frequency.",
+        "It coordinates the timing of animations, input events, and window drawing by synchronizing them with the hardware display's VSYNC pulses (e.g. every 16.6ms for 60Hz or 8.3ms for 120Hz).",
+        "It downloads background app updates from Google Play.",
+        "It converts Kotlin code into DEX bytecode."
+      ],
+      correctIndex: 1,
+      explanation: "The Choreographer receives hardware VSYNC pulses from the display subsystem and schedules three critical callbacks in lockstep: Input, Animation, and Traversal (measure, layout, draw). If main thread work takes longer than the VSYNC interval, a frame is dropped (jank)."
+    },
+    {
+      id: "q43",
+      question: "Why should Android applications avoid storing authentication tokens in plain 'SharedPreferences' or public external storage?",
+      options: [
+        "SharedPreferences cannot store strings longer than 10 characters.",
+        "Plain SharedPreferences XML files on rooted devices or backup archives can be extracted in plaintext; apps must use EncryptedSharedPreferences backed by Android KeyStore master keys or Jetpack DataStore with AES-GCM.",
+        "SharedPreferences files are wiped by Android whenever battery is below 20%.",
+        "SharedPreferences requires runtime internet permissions."
+      ],
+      correctIndex: 1,
+      explanation: "Standard SharedPreferences stores key-value pairs as unencrypted XML in /data/data/<package>/shared_prefs/. On rooted devices, ADB backups, or via local privilege escalation, tokens can be extracted effortlessly. EncryptedSharedPreferences automatically encrypts keys and values using AES-256."
+    },
+    {
+      id: "q44",
+      question: "What is 'Deadlock' versus 'Livelock' in concurrent multi-threaded Android programming?",
+      options: [
+        "Deadlock occurs when threads continuously change states without making forward progress; Livelock occurs when two threads wait indefinitely for locks held by each other.",
+        "Deadlock occurs when two or more threads are permanently blocked waiting for locks held by each other; Livelock occurs when threads actively change states in response to each other but neither makes forward progress.",
+        "Deadlock only occurs on Samsung devices; Livelock only occurs on Google Pixel devices.",
+        "There is no difference between Deadlock and Livelock."
+      ],
+      correctIndex: 1,
+      explanation: "In a Deadlock, threads are frozen (sleeping) waiting for locked resources held by each other. In a Livelock, threads are actively running and responding to each other (e.g. repeatedly yielding or retrying locks simultaneously), consuming CPU without ever accomplishing real work."
+    },
+    {
+      id: "q45",
+      question: "In Jetpack Compose, what is the role of 'rememberSaveable' and how does it differ from 'remember'?",
+      options: [
+        "rememberSaveable saves state to a remote database on AWS.",
+        "remember preserves state across recompositions only; rememberSaveable additionally persists state across Activity recreation and system-initiated process death using an internal Bundle Saver.",
+        "rememberSaveable only works with primitive Int and Boolean types.",
+        "rememberSaveable prevents the user from navigating back."
+      ],
+      correctIndex: 1,
+      explanation: "remember retains state across recompositions but loses data when the Activity is recreated (e.g. screen rotation, theme changes) or during system process death. rememberSaveable automatically packages state into the Android SavedState Bundle using Saver implementations."
+    },
+    {
+      id: "q46",
+      question: "What is the primary difference between Kotlin's 'crossinline' and 'noinline' parameters in inline functions?",
+      options: [
+        "noinline prevents the parameter lambda from being inlined, allowing it to be stored or passed around as a regular object; crossinline inlines the lambda but forbids non-local returns (e.g. returning from the enclosing function).",
+        "crossinline forces the lambda to execute on Dispatchers.Default.",
+        "noinline deletes the lambda from bytecode.",
+        "crossinline and noinline are identical in modern Kotlin versions."
+      ],
+      correctIndex: 0,
+      explanation: "In inline functions, lambdas normally allow 'non-local returns' (exiting the caller directly). crossinline allows inlining the lambda body while forbidding non-local returns (essential when the lambda is executed inside an execution context like an anonymous object or nested runnable). noinline completely disables inlining for that specific parameter."
+    },
+    {
+      id: "q47",
+      question: "How does Android's 'App Standby Buckets' system restrict background work for infrequently used applications?",
+      options: [
+        "It uninstalls apps that haven't been opened for 7 days.",
+        "It categorizes apps into tiers (Active, Working Set, Frequent, Rare, Restricted) based on user engagement, progressively clamping how often jobs, alarms, and high-priority FCM messages can execute.",
+        "It turns off the phone display when background apps run.",
+        "It forces all background tasks to run exclusively over Bluetooth."
+      ],
+      correctIndex: 1,
+      explanation: "Introduced in Android 9, App Standby Buckets place apps into tiers based on usage patterns. Apps in the 'Rare' or 'Restricted' buckets face severe caps: jobs can only execute once every 24 hours, alarms are delayed, and FCM high-priority messages are throttled to preserve user battery."
+    },
+    {
+      id: "q48",
+      question: "In Room SQLite database migrations, what happens if an app schema version is incremented from 2 to 3 without providing a Migration or 'fallbackToDestructiveMigration()'?",
+      options: [
+        "Room automatically writes the SQL migration scripts using AI.",
+        "Room throws an IllegalStateException crash on startup because the SQLite schema hash does not match the IdentityHash recorded in Room master table.",
+        "Room ignores the new fields and continues using the old schema.",
+        "The Android OS formats the device storage partition."
+      ],
+      correctIndex: 1,
+      explanation: "Room validates schema integrity upon database opening by comparing the Identity Hash stored in the room_master_table against the hash generated at compile time. If versions mismatch without an explicit Migration(2, 3) or fallbackToDestructiveMigration(), Room throws an immediate crash to prevent data corruption."
+    },
+    {
+      id: "q49",
+      question: "What is the purpose of the 'Turbine' testing library in Kotlin Coroutines unit testing?",
+      options: [
+        "It tests the RPM of the physical phone cooling fan.",
+        "It provides a clean, sequential testing DSL (e.g. 'flow.test { assertEquals(item, awaitItem()) }') for asserting and verifying Kotlin Flow emissions, turbine completion, and errors without race conditions.",
+        "It replaces Android JUnit runners.",
+        "It measures the battery drain of coroutines."
+      ],
+      correctIndex: 1,
+      explanation: "Turbine is the industry-standard coroutine Flow testing library. It allows developers to test hot and cold flows sequentially, asserting individual emissions with awaitItem(), verifying completions with awaitComplete(), and catching errors without flaky delay timers."
+    },
+    {
+      id: "q50",
+      question: "As a Staff Android Engineer, what is your primary strategy for diagnosing and fixing a 120 FPS frame drop (jank) in a complex Jetpack Compose screen?",
+      options: [
+        "Switch back to legacy XML RelativeLayout for all screens.",
+        "Use Android Studio Layout Inspector to identify recomposition and skip counts, run System Tracing (Perfetto/Macrobenchmark) to detect Main thread stalls, defer state reads to Layout/Draw phases, and annotate immutable data models with @Immutable.",
+        "Increase device RAM by downloading virtual memory.",
+        "Disable hardware acceleration in AndroidManifest.xml."
+      ],
+      correctIndex: 1,
+      explanation: "Staff-level jank triage follows a methodical profiler-first approach: 1) Verify recomposition/skip metrics in Layout Inspector, 2) Use Perfetto / Jetpack Macrobenchmark to inspect Choreographer frame intervals and Main thread traces, 3) Eliminate unstable lambda allocations and ensure collections are ImmutableList, 4) Defer state reads from Composition phase to Layout/Draw phases."
     }
   ]
 };

@@ -31,10 +31,10 @@ An interactive technical interview preparation hub tailored for **Senior Android
    - **Real-Time Driver Geolocation & Dispatch Telemetry (Uber / Grab Mobile)**: FusedLocation adaptive sampling, Kalman filter GPS smoothing, FGS location type, and map spline interpolation.
    - **Dynamic Modular Architecture & Micro-Apps Super-App (Grab / Gojek / Monorepo)**: Play Feature Delivery DFMs, decoupled contract routers, Dagger subgraph scoping, and crash circuit breakers.
 
-4. **🧠 Android Internals & Gotchas Quiz (16 Staff-Level Scenarios)**
-   - 16 scenario-based questions with in-depth technical rationales covering: Coroutines exception propagation, ART AOT compilation, 16 KB memory page alignment, Binder 1MB transaction buffer limits (`TransactionTooLargeException`), Compose `SnapshotMutationPolicy`, `Dispatchers.IO` vs `Default`, Android App Links digital asset verification, ProGuard/R8 full mode reflection traps, Dalvik vs Native heap memory, and `SubcomposeLayout` performance.
+4. **🧠 Android Internals & Gotchas Quiz (50 Staff-Level Scenarios)**
+   - 50 scenario-based questions with in-depth technical rationales covering Kotlin concurrency, Jetpack Compose internals, ART compilation, 16KB pages, Binder IPC, security, memory profiling, and architecture covering: Coroutines exception propagation, ART AOT compilation, 16 KB memory page alignment, Binder 1MB transaction buffer limits (`TransactionTooLargeException`), Compose `SnapshotMutationPolicy`, `Dispatchers.IO` vs `Default`, Android App Links digital asset verification, ProGuard/R8 full mode reflection traps, Dalvik vs Native heap memory, and `SubcomposeLayout` performance.
 
-5. **⚡ Quick Reference Cheat Sheets (8 Essential Pillars)**
+5. **⚡ Quick Reference Cheat Sheets (50 Comprehensive Topic Cards)**
    - Compose Stability & Skipping Rules.
    - Coroutines & Structured Concurrency.
    - Android 14 & 15 Platform Changes (FGS types & 16KB pages).
