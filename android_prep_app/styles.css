@@ -1413,6 +1413,7 @@ body.has-maximized-section {
   align-items: start;
   min-width: 0;
   max-width: 100%;
+  transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .challenge-sidebar {
@@ -1420,15 +1421,17 @@ body.has-maximized-section {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .challenge-header {
-  padding: 20px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
 
-.challenge-header h3 {
-  font-size: 16px;
+.challenge-header h3,
+.challenge-header-text h3 {
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -1437,16 +1440,29 @@ body.has-maximized-section {
   color: var(--text-muted);
 }
 
+.inner-collapse-challenge-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .challenge-list {
   display: flex;
   flex-direction: column;
 }
 
 .challenge-nav-item {
-  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: var(--transition);
+  position: relative;
 }
 
 .challenge-nav-item:last-child {
@@ -1462,10 +1478,16 @@ body.has-maximized-section {
   border-left: 4px solid var(--accent-primary);
 }
 
+.challenge-nav-content {
+  flex: 1;
+  min-width: 0;
+}
+
 .challenge-nav-item h4 {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   margin-bottom: 4px;
+  line-height: 1.35;
 }
 
 .challenge-nav-meta {
@@ -1473,6 +1495,104 @@ body.has-maximized-section {
   justify-content: space-between;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.challenge-num-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: var(--transition);
+}
+
+.challenge-nav-item.active .challenge-num-badge {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+}
+
+.challenge-nav-item.solved .challenge-num-badge {
+  background: var(--success-light);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+/* Collapsible Desktop Mode (>960px) */
+@media (min-width: 961px) {
+  .coding-layout.sidebar-collapsed {
+    grid-template-columns: 60px 1fr;
+    gap: 16px;
+  }
+
+  .coding-layout.sidebar-collapsed .challenge-sidebar {
+    width: 60px;
+  }
+
+  .coding-layout.sidebar-collapsed .challenge-header {
+    padding: 14px 6px;
+    justify-content: center;
+  }
+
+  .coding-layout.sidebar-collapsed .challenge-header-text {
+    display: none;
+  }
+
+  .coding-layout.sidebar-collapsed .inner-collapse-challenge-btn .toggle-icon {
+    transform: rotate(180deg);
+  }
+
+  .coding-layout.sidebar-collapsed .challenge-nav-item {
+    padding: 14px 6px;
+    justify-content: center;
+    border-left: none;
+  }
+
+  .coding-layout.sidebar-collapsed .challenge-nav-item.active {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent-primary);
+  }
+
+  .coding-layout.sidebar-collapsed .challenge-nav-content {
+    display: none;
+  }
+
+  /* Floating Tooltip in Collapsed View */
+  .coding-layout.sidebar-collapsed .challenge-nav-item::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    box-shadow: var(--shadow-md);
+    z-index: 250;
+  }
+
+  .coding-layout.sidebar-collapsed .challenge-nav-item:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
+  }
 }
 
 .challenge-main {
@@ -2508,6 +2628,11 @@ dialog[open],
   }
 
   /* Coding Arena Mobile: Swipeable Carousel for Challenges */
+  #toggleChallengeSidebarBtn,
+  .inner-collapse-challenge-btn {
+    display: none !important;
+  }
+
   .coding-layout {
     grid-template-columns: 1fr;
     gap: 14px;

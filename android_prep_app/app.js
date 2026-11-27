@@ -6,6 +6,7 @@ const STATE = {
   theme: localStorage.getItem('theme') || 'dark',
   themeColor: localStorage.getItem('theme_color') || 'blue',
   sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true',
+  codingSidebarCollapsed: localStorage.getItem('coding_sidebar_collapsed') === 'true',
   maximizedElement: null,
   solvedChallenges: JSON.parse(localStorage.getItem('solved_challenges') || '[]'),
   viewedHld: JSON.parse(localStorage.getItem('viewed_hld') || '[]'),
@@ -43,6 +44,7 @@ function initApp() {
   initTheme();
   initColorPalette();
   initSidebar();
+  initCodingSidebar();
   initNavigation();
   initGlobalSearch();
   initCompanyFilters();
@@ -185,6 +187,56 @@ function initSidebar() {
       toggleSidebar();
     }
   });
+}
+
+// 2b. Coding Arena Collapsible Sidebar Management
+let _lastCodingSidebarToggle = 0;
+function toggleCodingSidebar(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const now = Date.now();
+  if (now - _lastCodingSidebarToggle < 200) return;
+  _lastCodingSidebarToggle = now;
+
+  STATE.codingSidebarCollapsed = !STATE.codingSidebarCollapsed;
+  localStorage.setItem('coding_sidebar_collapsed', STATE.codingSidebarCollapsed);
+  updateCodingSidebarUI();
+}
+
+function initCodingSidebar() {
+  updateCodingSidebarUI();
+
+  // Keyboard shortcut Alt+C
+  window.addEventListener('keydown', (e) => {
+    if ((e.key === 'c' || e.key === 'C') && (e.altKey || e.metaKey)) {
+      if (STATE.currentTab === 'coding') {
+        e.preventDefault();
+        toggleCodingSidebar();
+      }
+    }
+  });
+}
+
+function updateCodingSidebarUI() {
+  const layout = document.getElementById('codingLayout');
+  const btn = document.getElementById('toggleChallengeSidebarBtn');
+  const innerToggleBtn = document.getElementById('innerCollapseChallengeBtn');
+  const isCollapsed = STATE.codingSidebarCollapsed;
+
+  if (layout) {
+    layout.classList.toggle('sidebar-collapsed', isCollapsed);
+  }
+  if (btn) {
+    const icon = btn.querySelector('.toggle-side-icon');
+    const label = btn.querySelector('.toggle-side-label');
+    if (icon) icon.textContent = isCollapsed ? '▶' : '◀';
+    if (label) label.textContent = isCollapsed ? 'Show Challenges' : 'Collapse List';
+    btn.setAttribute('title', isCollapsed ? 'Expand Challenges List (Alt+C)' : 'Collapse Challenges List (Alt+C)');
+  }
+  if (innerToggleBtn) {
+    const icon = innerToggleBtn.querySelector('.toggle-icon') || innerToggleBtn;
+    icon.textContent = isCollapsed ? '▶' : '◀';
+    innerToggleBtn.setAttribute('title', isCollapsed ? 'Expand Challenges List (Alt+C)' : 'Collapse Challenges List (Alt+C)');
+  }
 }
 
 // 3. Section Maximization (Declutter Focus Mode)
@@ -471,16 +523,23 @@ function renderCodingArena() {
 
   const allChallenges = getAllChallenges();
 
-  listContainer.innerHTML = allChallenges.map(ch => {
+  listContainer.innerHTML = allChallenges.map((ch, index) => {
     const isSolved = STATE.solvedChallenges.includes(ch.id);
     const isActive = ch.id === STATE.activeChallengeId;
+    const challengeNum = index + 1;
 
     return `
-      <div class="challenge-nav-item ${isActive ? 'active' : ''}" onclick="selectChallenge('${ch.id}')">
-        <h4>${isSolved ? '✅ ' : ''}${ch.title}</h4>
-        <div class="challenge-nav-meta">
-          <span>${ch.difficulty}</span>
-          <span>${ch.company.split('&')[0]}</span>
+      <div class="challenge-nav-item ${isActive ? 'active' : ''} ${isSolved ? 'solved' : ''}" 
+           onclick="selectChallenge('${ch.id}')" 
+           title="Challenge ${challengeNum}: ${ch.title} (${ch.difficulty})" 
+           data-tooltip="#${challengeNum} ${ch.title}">
+        <span class="challenge-num-badge">${isSolved ? '✓' : challengeNum}</span>
+        <div class="challenge-nav-content">
+          <h4>${isSolved ? '✅ ' : ''}${ch.title}</h4>
+          <div class="challenge-nav-meta">
+            <span>${ch.difficulty}</span>
+            <span>${ch.company.split('&')[0]}</span>
+          </div>
         </div>
       </div>
     `;
@@ -1235,6 +1294,7 @@ window.exitMaximize = exitMaximize;
 window.toggleTheme = toggleTheme;
 window.togglePaletteDropdown = togglePaletteDropdown;
 window.toggleSidebar = toggleSidebar;
+window.toggleCodingSidebar = toggleCodingSidebar;
 window.setThemeColor = setThemeColor;
 window.openGeminiModal = openGeminiModal;
 window.closeGeminiModal = closeGeminiModal;

@@ -327,18 +327,31 @@
               <h2 style="font-size: 20px; font-weight: 700;">Lead Coding Arena</h2>
               <span style="font-size: 13px; color: var(--text-muted);">Production Kotlin challenges: Concurrency, Coroutines, Custom Modifiers</span>
             </div>
-            <button class="section-maximize-btn" onclick="toggleMaximize('#codingView', 'Coding Arena')" title="Maximize Coding Arena View">
-              <span class="max-icon">⛶</span>
-              <span class="max-label">Maximize View</span>
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button id="toggleChallengeSidebarBtn" class="section-maximize-btn" onclick="toggleCodingSidebar()" title="Toggle Challenges Sidebar (Alt+C)">
+                <span class="toggle-side-icon">◀</span>
+                <span class="toggle-side-label">Collapse List</span>
+              </button>
+              <button class="section-maximize-btn" onclick="toggleMaximize('#codingView', 'Coding Arena')" title="Maximize Coding Arena View">
+                <span class="max-icon">⛶</span>
+                <span class="max-label">Maximize View</span>
+              </button>
+            </div>
           </div>
 
-          <div class="coding-layout">
+          <div class="coding-layout" id="codingLayout">
             <!-- Problem Selector Sidebar -->
-            <div class="challenge-sidebar">
+            <div class="challenge-sidebar" id="challengeSidebar">
               <div class="challenge-header">
-                <h3>Lead Coding Challenges</h3>
-                <span class="challenge-subtitle">Real-world production problems</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                  <div class="challenge-header-text">
+                    <h3>Lead Coding Challenges</h3>
+                    <span class="challenge-subtitle">Real-world production problems</span>
+                  </div>
+                  <button id="innerCollapseChallengeBtn" class="sidebar-toggle-btn inner-collapse-challenge-btn" title="Collapse challenges list (Alt+C)" onclick="toggleCodingSidebar()" aria-label="Toggle challenge sidebar">
+                    <span class="toggle-icon">◀</span>
+                  </button>
+                </div>
               </div>
               <div class="challenge-list" id="challengeList">
                 <!-- Dynamically populated -->
