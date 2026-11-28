@@ -309,6 +309,52 @@ Your task is to implement a thread-safe \`TokenManager\` using Kotlin Coroutines
         return ""
     }
 }`,
+      keySyntax: [
+        {
+                "title": "Double-Checked Locking with Mutex.withLock",
+                "badge": "MUTEX & CONCURRENCY",
+                "syntax": "private val refreshMutex = Mutex()
+
+suspend fun refreshTokenSynchronized(): String {
+    // Non-blocking coroutine mutex double-checked locking
+    return refreshMutex.withLock {
+        val freshToken = tokenStorage.getToken()
+        // Fast-path: Check if another coroutine already refreshed while we were waiting
+        if (freshToken != null && !isTokenExpired(freshToken)) {
+            return freshToken
+        }
+        
+        // Single-flight network refresh call
+        val newTokens = authApi.refreshToken(tokenStorage.getRefreshToken())
+        tokenStorage.saveTokens(newTokens.accessToken, newTokens.refreshToken)
+        newTokens.accessToken
+    }
+}",
+                "takeaway": "Guarantees exactly ONE network refresh call during concurrent 401 storms; suspends subsequent coroutines without blocking underlying OS threads."
+        },
+        {
+                "title": "OkHttp Authenticator Bridge with runBlocking Safe Scope",
+                "badge": "NETWORK INTERCEPTOR",
+                "syntax": "class TokenAuthenticator(
+    private val tokenManager: TokenManager
+) : Authenticator {
+    override fun authenticate(route: Route?, response: Response): Request? {
+        // Prevent infinite retry loops if refresh itself returned 401
+        if (responseCount(response) >= 3) return null
+
+        // Bridge synchronous OkHttp dispatch thread into coroutines
+        val newToken = runBlocking {
+            tokenManager.handleUnauthorized()
+        }
+
+        return response.request.newBuilder()
+            .header(\"Authorization\", \"Bearer $newToken\")
+            .build()
+    }
+}",
+                "takeaway": "Always guard against infinite 401 loops using response count checks; bridges OkHttp worker threads into structured coroutine synchronization."
+        }
+],
       solutionCode: `import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -418,6 +464,51 @@ fun FeedList(
 ) {
     // TODO: Optimize lambdas, keys, and stability
 }`,
+      keySyntax: [
+        {
+                "title": "Compose Model Stability with @Immutable & ImmutableList",
+                "badge": "COMPILER STABILITY",
+                "syntax": "// Replace unstable java.util.List with ImmutableList & explicit @Immutable
+@Immutable
+data class FeedItem(
+    val id: String,
+    val title: String,
+    val tags: ImmutableList<String> // Stable collection contract
+)
+
+@Immutable
+data class FeedUiState(
+    val items: ImmutableList<FeedItem> = persistentListOf(),
+    val isLoading: Boolean = false
+)",
+                "takeaway": "Standard List is an unstable interface in Compose; wrapping with ImmutableList or marking @Immutable prevents full-tree recomposition churn."
+        },
+        {
+                "title": "Stable LazyColumn Keys & Hoisted Remembered Lambdas",
+                "badge": "RECOMPOSITION OPTIMIZATION",
+                "syntax": "@Composable
+fun FeedList(
+    items: ImmutableList<FeedItem>,
+    onBookmark: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(modifier = modifier) {
+        items(
+            items = items,
+            key = { it.id }, // 1. Stable key allows item reuse without recomposition
+            contentType = { \"feed_item\" } // 2. Enhances item recycling efficiency
+        ) { item ->
+            // 3. Hoist/remember lambda to prevent allocating new function instances on scroll
+            val onBookmarkClick = remember(item.id) {
+                { onBookmark(item.id) }
+            }
+            UserFeedItem(item = item, onClick = onBookmarkClick)
+        }
+    }
+}",
+                "takeaway": "Specifying key and contentType lets Compose reorder items without re-running composable bodies; remembered lambdas prevent parameter inequality."
+        }
+],
       solutionCode: `import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import kotlinx.collections.immutable.ImmutableList
@@ -516,6 +607,52 @@ class OfflineFirstRepository<T>(
         return emptyFlow()
     }
 }`,
+      keySyntax: [
+        {
+                "title": "Reactive Cache-First Flow Pipeline",
+                "badge": "FLOW & ROOM",
+                "syntax": "fun getStream(forceRefresh: Boolean = false): Flow<Resource<List<T>>> = flow {
+    // 1. Emit loading with existing local database cache
+    val cached = local.getDataOnce()
+    emit(Resource.Loading(cachedData = cached))
+
+    // 2. Continuous emission from Room DAO
+    val localFlow = local.observeData()
+        .map { Resource.Success(it) }
+
+    // 3. Trigger asynchronous background network refresh if stale or forced
+    if (forceRefresh || isCacheStale()) {
+        try {
+            val remoteData = remote.fetchData()
+            local.saveData(remoteData) // Room triggers localFlow auto-update
+        } catch (e: Exception) {
+            emit(Resource.Error(e, cachedData = cached))
+        }
+    }
+
+    emitAll(localFlow)
+}.flowOn(Dispatchers.IO)",
+                "takeaway": "Instant local cache display eliminates blank screens; single source of truth in Room automatically propagates updates down the Flow."
+        },
+        {
+                "title": "Resilient Flow Error Handling & Offline Recovery",
+                "badge": "REACTIVE STREAMS",
+                "syntax": "repository.getStream()
+    .retryWhen { cause, attempt ->
+        // Exponential backoff retry on transient network errors only
+        if (cause is IOException && attempt < 3) {
+            delay(1000L * (1 shl attempt.toInt()))
+            true
+        } else {
+            false
+        }
+    }
+    .catch { e ->
+        emit(Resource.Error(e, cachedData = null))
+    }",
+                "takeaway": "Combines selective retry policies for IO exceptions with catch operators to preserve UI responsiveness during network drops."
+        }
+],
       solutionCode: `import kotlinx.coroutines.flow.*
 
 sealed interface Resource<out T> {
@@ -593,6 +730,49 @@ Implement an \`AudioPacketPipeline\`:
         return ByteArray(0)
     }
 }`,
+      keySyntax: [
+        {
+                "title": "Non-Blocking Drop-Oldest Channel for Real-Time Streaming",
+                "badge": "COROUTINES CHANNEL",
+                "syntax": "class AudioPacketPipeline(capacity: Int = 100) {
+    // Drop oldest frames on buffer congestion to maintain real-time conversational latency
+    private val audioChannel = Channel<ByteArray>(
+        capacity = capacity,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    fun onAudioFrameRecorded(frame: ByteArray) {
+        // trySend is non-blocking and safe in high-frequency audio callbacks (e.g. 10ms PCM)
+        audioChannel.trySend(frame)
+    }
+
+    fun consumeAudioStream(): Flow<ByteArray> = audioChannel.receiveAsFlow()
+}",
+                "takeaway": "BufferOverflow.DROP_OLDEST guarantees VoIP streams stay synchronized with real-time speech without throwing OutOfMemory or blocking the recorder thread."
+        },
+        {
+                "title": "Atomic Lock-Free Ring Buffer Pointer Wraparound",
+                "badge": "CONCURRENCY PRIMITIVE",
+                "syntax": "class LockFreeAudioRingBuffer(private val capacity: Int) {
+    private val buffer = arrayOfNulls<ByteArray>(capacity)
+    private val writeIndex = AtomicInteger(0)
+    private val readIndex = AtomicInteger(0)
+
+    fun push(packet: ByteArray): Boolean {
+        val currentWrite = writeIndex.get()
+        val nextWrite = (currentWrite + 1) % capacity
+        
+        // Overflow check against slow consumer
+        if (nextWrite == readIndex.get()) return false 
+
+        buffer[currentWrite] = packet
+        writeIndex.set(nextWrite)
+        return true
+    }
+}",
+                "takeaway": "Modulo pointer wraparound using AtomicInteger prevents memory reallocations during high-frequency real-time DSP audio loops."
+        }
+],
       solutionCode: `import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 
@@ -651,6 +831,49 @@ Architect a production-grade \`FeatureModuleManager\` that:
 2. If not installed, requests download via \`SplitInstallManager\` and exposes download progress reactively via a Kotlin \`Flow<FeatureInstallState>\`.
 3. Handles terminal failure states (network disconnect, storage full, user cancellation) and surfaces actionable errors.
 4. Once installed, loads the target entry point using reflection and executes the entry-point contract safely without memory leaks.`,
+      keySyntax: [
+        {
+                "title": "Play Core SplitInstallRequest & State Flow Observer",
+                "badge": "DYNAMIC DELIVERY",
+                "syntax": "fun requestModuleInstall(moduleName: String): Flow<FeatureInstallState> = callbackFlow {
+    val request = SplitInstallRequest.newBuilder()
+        .addModule(moduleName)
+        .build()
+
+    val listener = SplitInstallStateUpdatedListener { state ->
+        when (state.status()) {
+            SplitInstallSessionStatus.DOWNLOADING -> 
+                trySend(FeatureInstallState.Downloading(state.bytesDownloaded(), state.totalBytesToDownload()))
+            SplitInstallSessionStatus.INSTALLED -> {
+                trySend(FeatureInstallState.Installed)
+                close()
+            }
+            SplitInstallSessionStatus.FAILED -> {
+                trySend(FeatureInstallState.Failed(state.errorCode()))
+                close()
+            }
+        }
+    }
+    splitManager.registerListener(listener)
+    splitManager.startInstall(request)
+    awaitClose { splitManager.unregisterListener(listener) }
+}",
+                "takeaway": "Bridges Play Core callback listeners into reactive Kotlin callbackFlow while ensuring unregistration in awaitClose to eliminate leaks."
+        },
+        {
+                "title": "Reflection-Safe Feature Module EntryPoint Loader",
+                "badge": "MODULAR ARCHITECTURE",
+                "syntax": "fun loadFeatureEntryPoint(className: String): FeatureEntryPoint? {
+    return try {
+        val clazz = Class.forName(className)
+        clazz.getDeclaredConstructor().newInstance() as? FeatureEntryPoint
+    } catch (e: ClassNotFoundException) {
+        null // Module APK downloaded but not yet split-installed into ClassLoader
+    }
+}",
+                "takeaway": "Decouples base app compile-time dependencies from dynamic on-demand feature modules via interface reflection."
+        }
+],
       solutionCode: `import android.content.Context
 import com.google.android.play.core.splitinstall.*
 import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus
@@ -771,6 +994,44 @@ Implement an \`RxBleTelemetryPipeline\`:
 2. Apply backpressure mitigation (chunking/batching 50 packets per batch or conflating older samples when buffer pressure exceeds limits).
 3. Implement an exponential backoff auto-reconnect state machine (1s, 2s, 4s, capped at 16s) if connection drops (\`BluetoothProfile.STATE_DISCONNECTED\`).
 4. Ensure zero memory leaks of the \`BluetoothGatt\` instance upon cancellation.`,
+      keySyntax: [
+        {
+                "title": "BLE Callback-to-Flow Bridge with Automatic Disposal",
+                "badge": "HARDWARE & SENSORS",
+                "syntax": "fun observeCharacteristic(uuid: UUID): Flow<ByteArray> = callbackFlow {
+    val gattCallback = object : BluetoothGattCallback() {
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic
+        ) {
+            if (characteristic.uuid == uuid) {
+                // Non-blocking trySend to prevent stalling GATT thread pool
+                trySend(characteristic.value.copyOf())
+            }
+        }
+    }
+    bluetoothGatt.setCharacteristicNotification(targetChar, true)
+    awaitClose {
+        bluetoothGatt.setCharacteristicNotification(targetChar, false)
+        bluetoothGatt.disconnect()
+    }
+}",
+                "takeaway": "Hardware callbacks must never block; copying characteristic byte buffers and utilizing awaitClose guarantees cleanup on collector cancellation."
+        },
+        {
+                "title": "Telemetry Backpressure Throttling & Conflation",
+                "badge": "REACTIVE FLOW",
+                "syntax": "sensorPipeline.observeTelemetry()
+    // 1. Discard stale intermediate sensor readings under UI pressure
+    .conflate()
+    // 2. Throttle to matching UI frame budget (60 FPS / 16ms or 500ms sensor poll)
+    .sample(250.milliseconds)
+    .flowOn(Dispatchers.Default)
+    .onEach { packet -> updateTelemetryDisplay(packet) }
+    .launchIn(viewModelScope)",
+                "takeaway": "Flow conflate() and sample() prevent Main thread stutter when Bluetooth peripherals broadcast hundreds of packets per second."
+        }
+],
       solutionCode: `import android.annotation.SuppressLint
 import android.bluetooth.*
 import kotlinx.coroutines.*
@@ -896,6 +1157,58 @@ Implement a production cryptographic module \`AndroidCryptoManager\`:
 3. Encrypt data using \`AES/GCM/NoPadding\` with a cryptographically secure 12-byte Initialization Vector (IV) generated per encryption operation.
 4. Prepend the IV to the ciphertext payload for seamless storage.
 5. In decrypt, extract the 12-byte IV, verify the 128-bit authentication tag (AEAD), and sanitize sensitive plaintext byte buffers from JVM memory immediately after use.`,
+      keySyntax: [
+        {
+                "title": "Hardware-Backed KeyGen with StrongBox/TEE Keystore",
+                "badge": "OWASP SECURITY",
+                "syntax": "private fun getOrCreateKey(): SecretKey {
+    val keyStore = KeyStore.getInstance(\"AndroidKeyStore\").apply { load(null) }
+    if (keyStore.containsAlias(KEY_ALIAS)) {
+        return (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry).secretKey
+    }
+
+    val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, \"AndroidKeyStore\")
+    val spec = KeyGenParameterSpec.Builder(
+        KEY_ALIAS,
+        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+    )
+        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+        .setKeySize(256)
+        .setUserAuthenticationRequired(false) // Or true for Biometric auth binding
+        .build()
+
+    keyGenerator.init(spec)
+    return keyGenerator.generateKey()
+}",
+                "takeaway": "Generates hardware-isolated AES-256 keys inside Android TEE/StrongBox; the raw cryptographic key material can never be extracted from memory."
+        },
+        {
+                "title": "Authenticated AES-GCM Encrypt with IV Prepending",
+                "badge": "CRYPTOGRAPHY",
+                "syntax": "fun encrypt(plainText: ByteArray): ByteArray {
+    val cipher = Cipher.getInstance(\"AES/GCM/NoPadding\")
+    cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+    val iv = cipher.iv // 12-byte cryptographically secure random IV generated by provider
+    val cipherText = cipher.doFinal(plainText)
+
+    // Prepend 12-byte IV directly to cipher payload for seamless decryption
+    val outputStream = ByteArrayOutputStream()
+    outputStream.write(iv)
+    outputStream.write(cipherText)
+    return outputStream.toByteArray()
+}
+
+fun decrypt(ivAndCipherText: ByteArray): ByteArray {
+    val iv = ivAndCipherText.copyOfRange(0, 12)
+    val cipherText = ivAndCipherText.copyOfRange(12, ivAndCipherText.size)
+    val cipher = Cipher.getInstance(\"AES/GCM/NoPadding\")
+    cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
+    return cipher.doFinal(cipherText)
+}",
+                "takeaway": "AES-GCM provides both confidentiality and tamper-proof message authentication (MAC); never reuse an IV with the same key."
+        }
+],
       solutionCode: `import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.security.KeyStore
@@ -1014,6 +1327,55 @@ Implement a robust interop bridge addressing:
 2. Synchronizing legacy \`LiveData<OrderState>\` into Compose without triggering recomposition churn or dropped frames.
 3. Propagating Compose UI user interactions (e.g. coupon apply, payment tap) back to the legacy ViewModel via clean callback contracts.
 4. Preserving the app's custom XML theme attributes inside the Compose MaterialTheme wrapper.`,
+      keySyntax: [
+        {
+                "title": "Lifecycle-Safe ViewCompositionStrategy in Custom Views",
+                "badge": "INTEROP & LIFECYCLE",
+                "syntax": "class OrderSummaryComposeBridge @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : FrameLayout(context, attrs) {
+    private val composeView = ComposeView(context).apply {
+        // Critical: Dispose composition when host Fragment or View is detached
+        setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
+    }
+
+    fun bindState(state: OrderState) {
+        composeView.setContent {
+            OrderSummaryScreen(state = state)
+        }
+    }
+}",
+                "takeaway": "Without DisposeOnViewTreeLifecycleDestroyed, Compose hierarchies embedded in RecyclerView or Fragment XML leak memory and composition contexts."
+        },
+        {
+                "title": "Embedding Legacy Android Views in Jetpack Compose",
+                "badge": "COMPOSE INTEROP",
+                "syntax": "@Composable
+fun LegacyCustomViewContainer(
+    viewState: LegacyViewState,
+    onViewAction: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            // Created exactly once during initial composition
+            LegacyGraphView(ctx).apply {
+                setOnActionListener { action -> onViewAction(action) }
+            }
+        },
+        update = { legacyView ->
+            // Re-executed on state mutations without re-instantiating the View
+            legacyView.renderData(viewState.chartData)
+        }
+    )
+}",
+                "takeaway": "AndroidView cleanly isolates one-time view instantiation in factory from state mutations in update, preventing costly View recreation."
+        }
+],
       solutionCode: `import android.content.Context
 import android.util.AttributeSet
 import android.widget.FrameLayout
@@ -1104,6 +1466,39 @@ Implement a reusable, thread-safe \`MviStore<Intent, State, Effect>\` in pure Ko
 2. Process \`Intent\` actions sequentially via a background Coroutine channel (preventing race conditions during rapid user input).
 3. Support one-off side effects (e.g. Navigation routes, Snackbar alerts, biometric prompts) using a single-reader \`Channel\` without replay.
 4. Provide a structured cancellation scope that cancels all child coroutines when the screen unmounts on either Android (ViewModel onCleared) or iOS (deinit).`,
+      keySyntax: [
+        {
+                "title": "Atomic State Reduction with MutableStateFlow.update",
+                "badge": "MVI ARCHITECTURE",
+                "syntax": "abstract class MviStore<I : MviIntent, S : MviState, E : MviEffect>(
+    initialState: S,
+    private val scope: CoroutineScope
+) {
+    private val _state = MutableStateFlow(initialState)
+    val state: StateFlow<S> = _state.asStateFlow()
+
+    protected fun setState(reducer: S.() -> S) {
+        // Atomic compare-and-set prevents race conditions across background dispatches
+        _state.update { current -> current.reducer() }
+    }
+}",
+                "takeaway": "MutableStateFlow.update is atomic and lock-free; guarantees state consistency when multiple background coroutines dispatch intents concurrently."
+        },
+        {
+                "title": "One-Off Side Effects via Coroutines Channel",
+                "badge": "EVENT HANDLING",
+                "syntax": "// Use Channel for one-off snackbars, toasts, and navigation events
+private val _effects = Channel<E>(capacity = Channel.BUFFERED)
+val effects: Flow<E> = _effects.receiveAsFlow()
+
+protected fun sendEffect(effect: E) {
+    scope.launch {
+        _effects.send(effect)
+    }
+}",
+                "takeaway": "StateFlow conflates identical states, causing missed navigation events; buffered Channels ensure every one-off effect is consumed exactly once."
+        }
+],
       solutionCode: `import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -1209,6 +1604,46 @@ Construct an enterprise-grade \`BitmapMemoryCache\`:
 2. Measure cache entries by their exact memory footprint in bytes (\`Bitmap.allocationByteCount\`) rather than mere entry count.
 3. Integrate with Android's \`ComponentCallbacks2\` to dynamically evict cached bitmaps when the OS signals memory pressure (\`TRIM_MEMORY_RUNNING_CRITICAL\`, \`TRIM_MEMORY_RUNNING_LOW\`, or \`TRIM_MEMORY_UI_HIDDEN\`).
 4. Ensure thread-safe concurrent read/write operations without locking the UI thread.`,
+      keySyntax: [
+        {
+                "title": "LruCache Sized by Allocation Byte Count",
+                "badge": "MEMORY OPTIMIZATION",
+                "syntax": "class BitmapMemoryCache(
+    maxMemoryBytes: Int = (Runtime.getRuntime().maxMemory() / 8).toInt()
+) {
+    private val cache = object : LruCache<String, Bitmap>(maxMemoryBytes) {
+        override fun sizeOf(key: String, bitmap: Bitmap): Int {
+            // Must return actual allocated RAM footprint in bytes, not item count
+            return bitmap.allocationByteCount
+        }
+
+        override fun entryRemoved(evicted: Boolean, key: String, oldBitmap: Bitmap, newBitmap: Bitmap?) {
+            // Optional: Recycle or return oldBitmap to inBitmap reusable pool
+        }
+    }
+}",
+                "takeaway": "Default LruCache counts items (1, 2, 3); overriding sizeOf with allocationByteCount prevents massive high-res bitmaps from causing OutOfMemory."
+        },
+        {
+                "title": "Low-Memory Trimming via ComponentCallbacks2",
+                "badge": "ANDROID RUNTIME",
+                "syntax": "override fun onTrimMemory(level: Int) {
+    when (level) {
+        ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL,
+        ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> {
+            // Process is about to be killed by Low Memory Killer (LMK)
+            cache.evictAll()
+        }
+        ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
+        ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> {
+            // Trim cache to 50% capacity
+            cache.trimToSize(cache.maxSize() / 2)
+        }
+    }
+}",
+                "takeaway": "Proactively responding to onTrimMemory prevents Android LMK daemon from killing your background app process."
+        }
+],
       solutionCode: `import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -1302,6 +1737,61 @@ Construct a resilient \`ExpeditedSyncWorker\`:
 3. Catch transient HTTP 5xx network exceptions and trigger exponential backoff retry via \`Result.retry()\`.
 4. Ensure critical unrecoverable 4xx authentication errors abort cleanly with \`Result.failure()\`.
 5. Gracefully handle coroutine cancellation when the OS reclaims expedited execution quota.`,
+      keySyntax: [
+        {
+                "title": "Expedited CoroutineWorker with Foreground Service Fallback",
+                "badge": "WORKMANAGER",
+                "syntax": "class ExpeditedSyncWorker(
+    appContext: Context,
+    workerParams: WorkerParameters
+) : CoroutineWorker(appContext, workerParams) {
+
+    // Mandatory for expedited work on Android 11 and lower:
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val notification = NotificationCompat.Builder(applicationContext, \"sync_channel\")
+            .setContentTitle(\"Synchronizing Critical Data\")
+            .setSmallIcon(R.drawable.ic_sync)
+            .build()
+        return ForegroundInfo(404, notification)
+    }
+
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        return@withContext try {
+            repository.performExpeditedSync()
+            Result.success()
+        } catch (e: IOException) {
+            Result.retry() // Triggers exponential backoff
+        }
+    }
+}",
+                "takeaway": "Expedited work executes immediately bypassing Doze; providing getForegroundInfo() prevents FatalException crashes on pre-Android 12 devices."
+        },
+        {
+                "title": "WorkRequest Network Constraints & Exponential Backoff",
+                "badge": "BACKGROUND EXECUTION",
+                "syntax": "val request = OneTimeWorkRequestBuilder<ExpeditedSyncWorker>()
+    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+    .setConstraints(
+        Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build()
+    )
+    .setBackoffCriteria(
+        BackoffPolicy.EXPONENTIAL,
+        WorkRequest.MIN_BACKOFF_MILLIS,
+        TimeUnit.MILLISECONDS
+    )
+    .build()
+
+WorkManager.getInstance(context).enqueueUniqueWork(
+    \"critical_sync\",
+    ExistingWorkPolicy.KEEP,
+    request
+)",
+                "takeaway": "OutOfQuotaPolicy ensures tasks still run if the app exhausts its OS expedited quota; EXPONENTIAL backoff avoids hammering failing servers."
+        }
+],
       solutionCode: `import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -1423,6 +1913,59 @@ Construct a production-ready custom \`StaggeredMasonryLayout\`:
 3. Measure each child measurable with exact column width constraints.
 4. Maintain an array of current column heights and place each child into whichever column is currently lowest.
 5. Compute the total layout width and max column height, calling \`layout(totalWidth, maxHeight)\` with exact coordinates for each placeable.`,
+      keySyntax: [
+        {
+                "title": "Custom Compose Layout MeasurePolicy",
+                "badge": "COMPOSE CUSTOM LAYOUT",
+                "syntax": "@Composable
+fun StaggeredMasonryLayout(
+    modifier: Modifier = Modifier,
+    columns: Int = 2,
+    content: @Composable () -> Unit
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val columnWidth = constraints.maxWidth / columns
+        val itemConstraints = constraints.copy(minWidth = 0, maxWidth = columnWidth)
+        
+        // Measure all children with constrained column widths
+        val placeables = measurables.map { measurable ->
+            measurable.measure(itemConstraints)
+        }
+        
+        // Track running column heights
+        val columnHeights = IntArray(columns) { 0 }
+        val itemPositions = placeables.map { placeable ->
+            val shortestColumn = columnHeights.indices.minByOrNull { columnHeights[it] } ?: 0
+            val x = shortestColumn * columnWidth
+            val y = columnHeights[shortestColumn]
+            columnHeights[shortestColumn] += placeable.height
+            IntOffset(x, y)
+        }
+
+        layout(width = constraints.maxWidth, height = columnHeights.maxOrNull() ?: 0) {
+            placeables.forEachIndexed { i, placeable ->
+                placeable.placeRelative(itemPositions[i])
+            }
+        }
+    }
+}",
+                "takeaway": "Sub-layouts implement the single-pass Compose Layout phase; placing children into the shortest column dynamically creates staggered masonry grids."
+        },
+        {
+                "title": "Relative Placement Coordinates & RTL Support",
+                "badge": "UI PLACEMENT",
+                "syntax": "layout(totalWidth, totalHeight) {
+    placeables.forEachIndexed { index, placeable ->
+        // Always placeRelative rather than place to automatically honor Right-To-Left (RTL) locales
+        placeable.placeRelative(
+            x = itemPositions[index].x,
+            y = itemPositions[index].y
+        )
+    }
+}",
+                "takeaway": "Using placeRelative automatically flips X offsets when the user is in an Arabic/Hebrew RTL language configuration."
+        }
+],
       solutionCode: `import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
@@ -1523,6 +2066,63 @@ Implement \`NewsRemoteMediator\`:
 3. On \`LoadType.REFRESH\`, clear the old cached items and remote keys atomically.
 4. Insert both new articles and updated \`RemoteKeys\` inside \`database.withTransaction { ... }\`.
 5. Return \`MediatorResult.Success(endOfPaginationReached = isLastPage)\` or \`MediatorResult.Error(e)\`.`,
+      keySyntax: [
+        {
+                "title": "Paging 3 RemoteMediator Transaction & LoadType",
+                "badge": "PAGING 3 & ROOM",
+                "syntax": "@OptIn(ExperimentalPagingApi::class)
+class NewsRemoteMediator(
+    private val api: NewsApiService,
+    private val database: AppDatabase
+) : RemoteMediator<Int, ArticleEntity>() {
+
+    override suspend fun load(
+        loadType: LoadType,
+        state: PagingState<Int, ArticleEntity>
+    ): MediatorResult {
+        val page = when (loadType) {
+            LoadType.REFRESH -> 1
+            LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
+            LoadType.APPEND -> {
+                val remoteKey = getRemoteKeyForLastItem(state)
+                    ?: return MediatorResult.Success(endOfPaginationReached = true)
+                remoteKey.nextKey ?: return MediatorResult.Success(endOfPaginationReached = true)
+            }
+        }
+
+        val response = api.fetchArticles(page = page, pageSize = state.config.pageSize)
+        
+        database.withTransaction {
+            if (loadType == LoadType.REFRESH) {
+                database.remoteKeyDao().clearAll()
+                database.articleDao().clearAll()
+            }
+            database.remoteKeyDao().insertAll(...)
+            database.articleDao().insertAll(response.items)
+        }
+
+        return MediatorResult.Success(endOfPaginationReached = response.isLastPage)
+    }
+}",
+                "takeaway": "database.withTransaction ensures atomic cache replacement during REFRESH; returning MediatorResult signals Paging 3 loading states."
+        },
+        {
+                "title": "Cold Initial Refresh Skip via InitializeAction",
+                "badge": "PERFORMANCE",
+                "syntax": "override suspend fun initialize(): InitializeAction {
+    val cacheTimeout = TimeUnit.HOURS.toMillis(1)
+    val lastUpdated = database.remoteKeyDao().getLastUpdatedTimestamp() ?: 0L
+    
+    return if (System.currentTimeMillis() - lastUpdated <= cacheTimeout) {
+        // Skip network hit on cold app startup if cache is fresh
+        InitializeAction.SKIP_INITIAL_REFRESH
+    } else {
+        InitializeAction.LAUNCH_INITIAL_REFRESH
+    }
+}",
+                "takeaway": "SKIP_INITIAL_REFRESH prevents wasteful network battery drain on cold restart when local Room database cache is still fresh."
+        }
+],
       solutionCode: `import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingState
@@ -1648,6 +2248,46 @@ Construct a resilient \`DuplexWebSocketManager\`:
 3. Maintain an active ping/pong heartbeat watchdog (send ping every 15s; if no pong received within 10s, forcibly cycle the connection).
 4. Expose incoming messages via \`SharedFlow<SocketMessage>\` or \`StateFlow<ConnectionState>\`.
 5. Ensure zero thread or coroutine leaks upon \`disconnect()\`.`,
+      keySyntax: [
+        {
+                "title": "Duplex WebSocket Outbound Queue with Coroutines Channel",
+                "badge": "WEBSOCKET & NETWORK",
+                "syntax": "class DuplexWebSocketManager(
+    private val client: OkHttpClient,
+    private val socketUrl: String,
+    private val scope: CoroutineScope
+) {
+    // Unbounded channel queues outgoing frames safely before connection handshake completes
+    private val outboundChannel = Channel<String>(capacity = Channel.UNLIMITED)
+    private var webSocket: WebSocket? = null
+
+    fun send(message: String) {
+        outboundChannel.trySend(message)
+    }
+
+    private fun startOutboundPump(ws: WebSocket) = scope.launch {
+        for (message in outboundChannel) {
+            ws.send(message)
+        }
+    }
+}",
+                "takeaway": "Channel queuing decouples message submission from socket connection lifecycle; messages sent while offline are seamlessly buffered."
+        },
+        {
+                "title": "Exponential Jitter Backoff Reconnect Supervisor",
+                "badge": "FAULT TOLERANCE",
+                "syntax": "private suspend fun scheduleReconnect(attempt: Int) {
+    // Full Jitter backoff prevents synchronized reconnect storms hitting the server
+    val baseDelay = 1000L * (1 shl minOf(attempt, 6)) // Max ~64s
+    val jitter = Random.nextLong(0, baseDelay / 2)
+    val totalDelay = baseDelay + jitter
+
+    delay(totalDelay)
+    connect()
+}",
+                "takeaway": "Adding randomized jitter spreads reconnection requests across time, preventing catastrophic server overload after outage recoveries."
+        }
+],
       solutionCode: `import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -1812,6 +2452,56 @@ Construct a production-grade \`HighThroughputEventBatcher\`:
 3. Execute batch insertions inside a Room \`@Transaction\` or \`withTransaction { ... }\` leveraging Write-Ahead Logging (WAL) mode.
 4. Ensure critical events (e.g. \`EventType.SECURITY_ALERT\`) bypass the buffer for immediate synchronous write.
 5. Provide a \`flushAndClose()\` lifecycle hook that drains pending events when the app moves to background.`,
+      keySyntax: [
+        {
+                "title": "Enabling SQLite Write-Ahead Logging (WAL) in Room",
+                "badge": "ROOM & SQLITE WAL",
+                "syntax": "@Database(entities = [TelemetryEntity::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    companion object {
+        fun buildDatabase(context: Context): AppDatabase {
+            return Room.databaseBuilder(context, AppDatabase::class.java, \"telemetry.db\")
+                .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING) // Concurrent reads while writing!
+                .build()
+        }
+    }
+}",
+                "takeaway": "WAL mode allows concurrent readers to read from SQLite database while a background batch transaction is writing, eliminating UI query stalls."
+        },
+        {
+                "title": "Chunked Batch Ingestion with Periodic Ticker Flush",
+                "badge": "HIGH-THROUGHPUT BUFFER",
+                "syntax": "class HighThroughputEventBatcher(
+    private val database: AppDatabase,
+    private val scope: CoroutineScope
+) {
+    private val memoryQueue = ConcurrentLinkedQueue<TelemetryEntity>()
+
+    init {
+        // Periodic timer flushes buffer even during low-volume trickles
+        scope.launch {
+            while (isActive) {
+                delay(3000L)
+                flushBatch()
+            }
+        }
+    }
+
+    suspend fun flushBatch() = withContext(Dispatchers.IO) {
+        if (memoryQueue.isEmpty()) return@withContext
+        val batch = mutableListOf<TelemetryEntity>()
+        while (batch.size < 500 && memoryQueue.isNotEmpty()) {
+            memoryQueue.poll()?.let { batch.add(it) }
+        }
+
+        database.withTransaction {
+            database.telemetryDao().insertAll(batch)
+        }
+    }
+}",
+                "takeaway": "Batching 500 rows into a single SQLite transaction with periodic ticker flushing reduces disk IO operations from 500 disk syncs down to 1."
+        }
+],
       solutionCode: `import androidx.room.withTransaction
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel

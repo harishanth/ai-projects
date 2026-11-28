@@ -136,6 +136,7 @@ const MOBILE_STATE = {
   cheatFilter: 'all',
   challengeFilter: 'all',
   companyFilter: 'all',
+  codeViewMode: localStorage.getItem('coding_view_mode') || 'syntax',
   quiz: {
     currentIndex: 0,
     score: 0,
@@ -617,10 +618,19 @@ function openCodeSheet(challengeId) {
   if (!backdrop || !sheet || !title || !body) return;
 
   title.textContent = ch.title;
-  
+  renderMobileCodeContent(ch, body);
+
+  backdrop.classList.add('show');
+  sheet.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function renderMobileCodeContent(ch, container) {
+  const mode = MOBILE_STATE.codeViewMode || 'syntax';
+  const hasSyntax = ch.keySyntax && ch.keySyntax.length > 0;
   const codeContent = ch.solutionCode || ch.starterCode || '// No code available';
 
-  body.innerHTML = `
+  container.innerHTML = `
     <div style="margin-bottom: 10px;">
       <span class="pill-tag accent">🏢 ${ch.company}</span>
       <span class="pill-tag">${ch.category}</span>
@@ -630,10 +640,45 @@ function openCodeSheet(challengeId) {
       <strong>Problem Overview:</strong><br>${ch.problemDesc || ch.summary}
     </div>
 
-    <div class="sheet-code-container">
-      <button class="sheet-copy-btn" onclick="copyCurrentCode()">📋 Copy</button>
-      <pre id="currentCodeSnippet"><code>${escapeHtml(codeContent)}</code></pre>
+    <div class="mobile-syntax-toggle">
+      <button class="mobile-syntax-toggle-btn ${mode === 'syntax' ? 'active' : ''}" onclick="setMobileCodeMode('${ch.id}', 'syntax')">
+        ⚡ Important Syntax ${hasSyntax ? `(${ch.keySyntax.length})` : ''}
+      </button>
+      <button class="mobile-syntax-toggle-btn ${mode === 'full' ? 'active' : ''}" onclick="setMobileCodeMode('${ch.id}', 'full')">
+        📄 Entire Code Block
+      </button>
     </div>
+
+    ${mode === 'syntax' && hasSyntax ? `
+      <div class="mobile-syntax-cards">
+        ${ch.keySyntax.map((snip, idx) => `
+          <div class="mobile-syntax-card">
+            <div class="mobile-syntax-card-top">
+              <span class="pill-tag accent" style="font-size: 10px;">${snip.badge || 'KEY SYNTAX'}</span>
+              <button class="sheet-copy-btn-inline" onclick="copySnippetText('${ch.id}', ${idx}, this)">📋 Copy</button>
+            </div>
+            <div class="mobile-syntax-title">${snip.title}</div>
+            <pre class="mobile-syntax-code"><code>${escapeHtml(snip.syntax)}</code></pre>
+            <div class="mobile-syntax-takeaway">🎯 <strong>Takeaway:</strong> ${escapeHtml(snip.takeaway)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="view-code-btn" style="margin-top: 8px; margin-bottom: 12px;" onclick="setMobileCodeMode('${ch.id}', 'full')">
+        <span>📄 View Full Source Code Block</span>
+        <span>→</span>
+      </button>
+    ` : `
+      <div class="sheet-code-container">
+        <button class="sheet-copy-btn" onclick="copyCurrentCode()">📋 Copy</button>
+        <pre id="currentCodeSnippet"><code>${escapeHtml(codeContent)}</code></pre>
+      </div>
+      ${hasSyntax ? `
+        <button class="view-code-btn" style="margin-top: 8px; margin-bottom: 12px;" onclick="setMobileCodeMode('${ch.id}', 'syntax')">
+          <span>⚡ Switch to Important Syntax View</span>
+          <span>→</span>
+        </button>
+      ` : ''}
+    `}
 
     ${ch.explanation ? `
       <div style="margin-top: 14px; background: var(--bg-card-secondary); padding: 10px; border-radius: var(--radius-sm); font-size: 12px;">
@@ -642,10 +687,30 @@ function openCodeSheet(challengeId) {
       </div>
     ` : ''}
   `;
+}
 
-  backdrop.classList.add('show');
-  sheet.classList.add('show');
-  document.body.style.overflow = 'hidden';
+function setMobileCodeMode(challengeId, mode) {
+  MOBILE_STATE.codeViewMode = mode;
+  localStorage.setItem('coding_view_mode', mode);
+  const challenges = APP_DATA.codingChallenges || [];
+  const ch = challenges.find(c => c.id === challengeId);
+  const body = document.getElementById('sheetBody');
+  if (ch && body) {
+    renderMobileCodeContent(ch, body);
+  }
+}
+
+function copySnippetText(challengeId, snippetIndex, btn) {
+  const challenges = APP_DATA.codingChallenges || [];
+  const ch = challenges.find(c => c.id === challengeId);
+  if (!ch || !ch.keySyntax || !ch.keySyntax[snippetIndex]) return;
+
+  navigator.clipboard.writeText(ch.keySyntax[snippetIndex].syntax).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    showToast('Syntax snippet copied');
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
 }
 
 function closeBottomSheet() {

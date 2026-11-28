@@ -18,6 +18,7 @@ const STATE = {
   activeChallengeId: APP_DATA.codingChallenges[0].id,
   activeHldId: APP_DATA.systemDesigns[0].id,
   codeTab: 'solution', // 'solution' | 'explanation' | 'ai'
+  codingViewMode: localStorage.getItem('coding_view_mode') || 'syntax', // 'syntax' | 'full'
   aiState: {
     loading: false,
     activeChallengeId: null,
@@ -583,7 +584,10 @@ function renderActiveChallenge() {
           <span style="color: var(--accent-primary);"><strong>${ch.difficulty}</strong></span>
         </div>
       </div>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <button class="btn-sm btn-outline-subtle" onclick="setCodingViewMode(STATE.codingViewMode === 'syntax' ? 'full' : 'syntax')" title="Toggle between Key Syntax and Full Code Block">
+          ${STATE.codingViewMode === 'syntax' ? '📄 Show Entire Code Block' : '⚡ Show Important Syntax'}
+        </button>
         <button class="btn-sm btn-secondary" onclick="toggleMaximize('#challengeMain', '${ch.title.replace(/'/g, "\\'")}')" title="Maximize Workspace to Declutter">
           <span class="max-icon">⛶</span> Focus Workspace
         </button>
@@ -601,7 +605,9 @@ function renderActiveChallenge() {
     </div>
 
     <div class="code-tabs">
-      <button class="code-tab-btn ${STATE.codeTab === 'solution' ? 'active' : ''}" onclick="switchCodeTab('solution')">Production Solution (Kotlin)</button>
+      <button class="code-tab-btn ${STATE.codeTab === 'solution' ? 'active' : ''}" onclick="switchCodeTab('solution')">
+        ${STATE.codingViewMode === 'syntax' ? '⚡ Important Coding Syntax' : 'Production Solution (Kotlin)'}
+      </button>
       <button class="code-tab-btn ${STATE.codeTab === 'explanation' ? 'active' : ''}" onclick="switchCodeTab('explanation')">Architectural Deep-Dive</button>
       <button class="code-tab-btn ${STATE.codeTab === 'ai' ? 'active' : ''}" onclick="switchCodeTab('ai')">🤖 Ask Gemini (AI Assistant)</button>
     </div>
@@ -609,16 +615,30 @@ function renderActiveChallenge() {
     ${STATE.codeTab === 'solution' ? `
       <div class="code-editor-box">
         <div class="code-editor-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <span>kotlin</span>
             <span>•</span>
             <span>${ch.company}</span>
+            <div class="syntax-view-toggle">
+              <button class="syntax-toggle-btn ${STATE.codingViewMode === 'syntax' ? 'active' : ''}" 
+                      onclick="setCodingViewMode('syntax')" 
+                      title="Show only important Kotlin syntax">
+                ⚡ Important Syntax ${ch.keySyntax ? `(${ch.keySyntax.length})` : ''}
+              </button>
+              <button class="syntax-toggle-btn ${STATE.codingViewMode === 'full' ? 'active' : ''}" 
+                      onclick="setCodingViewMode('full')" 
+                      title="Show entire source code block">
+                📄 Entire Code Block
+              </button>
+            </div>
           </div>
           <button class="btn-copy-code" onclick="copyEntireProductionCode('${ch.id}', this)" title="Copy entire production Kotlin source code">
             📋 Copy Entire Source Code
           </button>
         </div>
-        <div class="code-display" id="codeDisplayArea">${escapeHtml(ch.solutionCode)}</div>
+        ${STATE.codingViewMode === 'syntax' ? renderKeySyntaxCards(ch) : `
+          <div class="code-display" id="codeDisplayArea">${escapeHtml(ch.solutionCode)}</div>
+        `}
       </div>
     ` : STATE.codeTab === 'explanation' ? `
       <div class="deep-dive-card-container" style="margin-bottom: 20px;">
@@ -639,7 +659,18 @@ function renderActiveChallenge() {
     `}
 
     <div class="code-actions">
-      <button class="btn-sm btn-primary" onclick="copyEntireProductionCode('${ch.id}', this)" title="Copy entire production Kotlin source code">
+      ${STATE.codeTab === 'solution' ? (
+        STATE.codingViewMode === 'syntax' ? `
+          <button class="btn-sm btn-primary" onclick="setCodingViewMode('full')" title="Expand to view full code block">
+            📄 View Entire Production Code Block
+          </button>
+        ` : `
+          <button class="btn-sm btn-primary" onclick="setCodingViewMode('syntax')" title="Show only critical syntax patterns">
+            ⚡ Show Important Syntax Only
+          </button>
+        `
+      ) : ''}
+      <button class="btn-sm btn-secondary" onclick="copyEntireProductionCode('${ch.id}', this)" title="Copy entire production Kotlin source code">
         📋 Copy Entire Source Code
       </button>
       ${STATE.codeTab !== 'solution' ? `
@@ -659,6 +690,84 @@ function renderActiveChallenge() {
       ` : ''}
     </div>
   `;
+}
+
+function renderKeySyntaxCards(ch) {
+  const snippets = ch.keySyntax || [];
+  if (snippets.length === 0) {
+    return `<div class="code-display" id="codeDisplayArea">${escapeHtml(ch.solutionCode)}</div>`;
+  }
+
+  const lineCount = ch.solutionCode ? ch.solutionCode.split('\n').length : 0;
+
+  return `
+    <div class="syntax-cards-wrapper">
+      <div class="syntax-banner">
+        <div class="syntax-banner-info">
+          <span class="syntax-banner-icon">⚡</span>
+          <div>
+            <strong>High-Yield Syntax Focus:</strong> Showing ${snippets.length} critical Kotlin patterns interviewers evaluate (skipping ${lineCount} lines of boilerplate).
+          </div>
+        </div>
+        <button class="btn-outline-subtle" onclick="setCodingViewMode('full')" title="Show entire code block">
+          📄 View Entire Block (${lineCount} lines)
+        </button>
+      </div>
+
+      <div class="syntax-cards-grid">
+        ${snippets.map((snip, idx) => `
+          <div class="syntax-card">
+            <div class="syntax-card-top">
+              <div class="syntax-title-group">
+                <span class="syntax-badge">${snip.badge || 'KEY SYNTAX'}</span>
+                <h4 class="syntax-card-title">${snip.title}</h4>
+              </div>
+              <button class="syntax-copy-btn" onclick="copySyntaxSnippet('${ch.id}', ${idx}, this)" title="Copy this syntax snippet">
+                📋 Copy Snippet
+              </button>
+            </div>
+            <pre class="syntax-code-display"><code>${escapeHtml(snip.syntax)}</code></pre>
+            <div class="syntax-takeaway-box">
+              <span class="takeaway-icon">🎯</span>
+              <div class="takeaway-text"><strong>Staff Interview Takeaway:</strong> ${escapeHtml(snip.takeaway)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="syntax-footer-actions">
+        <button class="btn-sm btn-secondary" onclick="setCodingViewMode('full')">
+          📄 Expand to Entire Code Block (${lineCount} lines)
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function setCodingViewMode(mode) {
+  STATE.codingViewMode = mode;
+  localStorage.setItem('coding_view_mode', mode);
+  renderActiveChallenge();
+}
+
+function copySyntaxSnippet(challengeId, snippetIndex, btnElement) {
+  const allChallenges = getAllChallenges();
+  const ch = allChallenges.find(c => c.id === challengeId);
+  if (!ch || !ch.keySyntax || !ch.keySyntax[snippetIndex]) return;
+
+  const code = ch.keySyntax[snippetIndex].syntax;
+  navigator.clipboard.writeText(code).then(() => {
+    const originalText = btnElement.innerHTML;
+    btnElement.innerHTML = '✓ Copied!';
+    btnElement.classList.add('copied');
+    showNotification('Syntax snippet copied to clipboard');
+    setTimeout(() => {
+      btnElement.innerHTML = originalText;
+      btnElement.classList.remove('copied');
+    }, 1800);
+  }).catch(() => {
+    showNotification('Failed to copy to clipboard', 'error');
+  });
 }
 
 function renderDeepDiveContent(ch) {
